@@ -155,11 +155,11 @@ const translations = {
     features_title: "Tudo o que você precisa, onde quer que esteja",
     features_desc: "Desenvolvemos o La Lira do zero para resolver os problemas reais que os músicos enfrentam em apresentações ao vivo e ensaios.",
     
-    feat_transpose_title: "Hinário, fácil e acessível",
+    feat_transpose_title: "Coletânea, fácil e acessível",
     feat_transpose_desc: "Acesse as letras de todas as músicas de forma rápida, navegue pelo hinário em múltiplos idiomas e leia os hinos confortavelmente a qualquer momento.",
     
     feat_offline_title: "Sempre Disponível",
-    feat_offline_desc: "Sinal ruim na igreja? Sem problemas. O La Lira funciona de forma local no seu dispositivo, carregando as letras instantaneamente e armazenando tudo sem necessidade de internet.",
+    feat_offline_desc: "Sinal ruim na igreja? Sem problemas. La Lira funciona de forma local no seu dispositivo, carregando as letras instantaneamente e armazenando tudo sem necessidade de internet.",
     
     feat_playlists_title: "Listas de Louvores",
     feat_playlists_desc: "Monte e ordene facilmente listas de hinos para os cultos. Arraste e solte músicas para reordená-las e passe de página de forma limpa durante a adoração.",

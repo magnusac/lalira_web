@@ -668,8 +668,9 @@ a {
   border-top: 1px solid var(--border-glass);
   padding-top: 2rem;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
+  text-align: center;
   flex-wrap: wrap;
   gap: 1.5rem;
   font-size: 0.9rem;
@@ -790,6 +791,14 @@ a {
   }
   .footer-legal-col .footer-links-list {
     align-items: flex-start;
+  }
+  .legal-back-btn {
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+  }
+  .legal-back-btn svg {
+    width: 14px;
+    height: 14px;
   }
 }
 
