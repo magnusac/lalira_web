@@ -12,13 +12,13 @@ const translations = {
     copyright: "© 2026 La Lira. Todos los derechos reservados.",
 
     // Hero Section
-    hero_tag: "Versión 1.0.0 Ya Disponible",
+    hero_tag: "Disponible Pronto",
     hero_title: "La Alabanza <br><span>en tus manos.</span>",
-    hero_desc: "Accede a las letras de todos tus himnos favoritos en una hermosa interfaz preparada para usar sin conexión. Encuentra canciones al instante, ajusta modos de lectura y organiza listas de reproducción con arrastrar y soltar. ¡Vista previa de transposición de acordes disponible en V3!",
+    hero_desc: "Accede a las letras de todos tus himnos favoritos en una hermosa interfaz preparada para usar sin conexión. Encuentra canciones al instante, ajusta modos de lectura y organiza listas de alabanzas con arrastrar y soltar. ¡Vista previa de transposición de acordes disponible en V3!",
     download_app_store: "Download on the",
     download_google_play: "GET IT ON",
-    scan_to_download: "Escanea para Descargar",
-    scan_compatible: "Compatible con iOS y Android",
+    scan_to_download: "Próximamente",
+    scan_compatible: "Para dispositivos iOS y Android",
 
     // Features Section
     features_tag: "Diseñado para la Adoración",
@@ -28,14 +28,14 @@ const translations = {
     feat_transpose_title: "Cifras (Hoja de Ruta)",
     feat_transpose_desc: "Las cifras alineadas con las sílabas y la transposición dinámica de tonos están en desarrollo activo y programadas para la versión V3.",
     
-    feat_offline_title: "Base de Datos Offline",
-    feat_offline_desc: "¿Mala señal en la iglesia? No hay problema. La Lira funciona con una base de datos SQLite local, cargando letras al instante y almacenando todo en tu dispositivo sin requerir red.",
+    feat_offline_title: "Siempre Disponible",
+    feat_offline_desc: "¿Mala señal en la iglesia? No hay problema. La Lira funciona de forma local en tu dispositivo, cargando letras al instante y almacenando todo sin necesidad de internet.",
     
-    feat_playlists_title: "Listas de Reproducción",
-    feat_playlists_desc: "Organiza fácilmente listas de himnos para los cultos. Arrastra y suelta canciones para reordenarlas, y desliza entre páginas limpiamente durante la adoración.",
+    feat_playlists_title: "Listas de Alabanzas",
+    feat_playlists_desc: "Organiza fácilmente listas de alabanzas para los cultos. Arrastra y suelta canciones para reordenarlas, y desliza entre páginas limpiamente durante la adoración.",
     
-    feat_search_title: "Búsqueda SQLite FTS5",
-    feat_search_desc: "Encuentra himnos en milisegundos por número, título o letra usando Búsqueda de Texto Completo. Los resultados se filtran dinámicamente en los himnarios Principal, Niños y Anexo.",
+    feat_search_title: "Búsquedas Avanzadas",
+    feat_search_desc: "Encuentra himnos al instante por número, título o letra. Los resultados se filtran de forma rápida y con mejores resultados en los himnarios Principal, Niños y Anexo.",
 
 
 
@@ -53,8 +53,8 @@ const translations = {
     faq_3_a: "La Lira es 100% gratuita para descargar y usar de forma local. La sincronización colaborativa de listas y copias de seguridad en la nube están planeadas para un plan premium en la versión V2.",
 
     // CTA Box
-    cta_title: "¿Listo para Guiar la Adoración sin Esfuerzo?",
-    cta_desc: "Únete a miles de músicos que usan La Lira para simplificar la gestión de sus cantos. Disponible ahora para dispositivos iOS y Android.",
+    cta_title: "¿Listo para tener la alabanza en tus manos?",
+    cta_desc: "La primera versión de La Lira estará disponible pronto. Prepárate para acceder a tus himnos favoritos de forma fácil y rápida, directamente en tu dispositivo.",
 
     // Footer Links
     footer_desc: "Una solución premium para la gestión de letras y acordes de himnarios, diseñada especialmente para directores de alabanza y músicos.",
@@ -126,13 +126,13 @@ const translations = {
     copyright: "© 2026 La Lira. Todos os direitos reservados.",
 
     // Hero Section
-    hero_tag: "Versão 1.0.0 Já Disponível",
+    hero_tag: "Disponível em Breve",
     hero_title: "O Louvor <br><span>em suas mãos.</span>",
-    hero_desc: "Acesse a letra de todos os seus hinos favoritos em uma interface linda e pronta para usar offline. Encontre músicas instantaneamente, ajuste modos de leitura e organize listas com arrastar e soltar. Prévia de transposição de acordes chegando na V3!",
+    hero_desc: "Acesse a letra de todos os seus hinos favoritos em uma interface linda e pronta para usar offline. Encontre músicas instantaneamente, ajuste modos de leitura e organize listas de louvores com arrastar e soltar. Prévia de transposição de acordes chegando na V3!",
     download_app_store: "Baixar na",
     download_google_play: "DISPONÍVEL NO",
-    scan_to_download: "Escaneie para Baixar",
-    scan_compatible: "Compatível com iOS & Android",
+    scan_to_download: "Em Breve",
+    scan_compatible: "Para dispositivos iOS e Android",
 
     // Features Section
     features_tag: "Projetado para Adoração",
@@ -142,14 +142,14 @@ const translations = {
     feat_transpose_title: "Cifras (Roadmap)",
     feat_transpose_desc: "Cifras alinhadas por sílaba e transposição dinâmica de tons estão em desenvolvimento ativo e planejadas para a versão V3.",
     
-    feat_offline_title: "Banco de Dados Offline",
-    feat_offline_desc: "Sinal ruim na igreja? Sem problemas. O La Lira roda com um banco de dados SQLite local, carregando as letras instantaneamente e armazenando tudo no seu dispositivo com zero uso de internet.",
+    feat_offline_title: "Sempre Disponível",
+    feat_offline_desc: "Sinal ruim na igreja? Sem problemas. O La Lira funciona de forma local no seu dispositivo, carregando as letras instantaneamente e armazenando tudo sem necessidade de internet.",
     
-    feat_playlists_title: "Playlists Personalizadas",
+    feat_playlists_title: "Listas de Louvores",
     feat_playlists_desc: "Monte e ordene facilmente listas de hinos para os cultos. Arraste e solte músicas para reordená-las e passe de página de forma limpa durante a adoração.",
     
-    feat_search_title: "Busca SQLite FTS5",
-    feat_search_desc: "Encontre hinos em milissegundos por número, título ou letra usando Busca de Texto Completo. Os resultados são filtrados dinamicamente nos hinários Principal, Infantil e Anexo.",
+    feat_search_title: "Buscas Avançadas",
+    feat_search_desc: "Encontre hinos instantaneamente por número, título ou letra. Os resultados são filtrados de forma rápida e com melhores resultados nos hinários Principal, Infantil e Anexo.",
 
 
 
@@ -167,8 +167,8 @@ const translations = {
     faq_3_a: "O La Lira é 100% gratuito para baixar e usar localmente. O compartilhamento de listas colaborativas e backup em nuvem estão planejados para um plano premium na versão V2.",
 
     // CTA Box
-    cta_title: "Pronto para Liderar a Adoração sem Esforço?",
-    cta_desc: "Junte-se a milhares de músicos que usam o La Lira para simplificar a gestão de seus hinos. Disponível agora para dispositivos iOS e Android.",
+    cta_title: "Pronto para ter o louvor em suas mãos?",
+    cta_desc: "A primeira versão do La Lira estará disponível em breve. Prepare-se para acessar seus hinos favoritos de forma fácil e rápida, diretamente no seu dispositivo.",
 
     // Footer Links
     footer_desc: "Uma solução premium para gestão de letras e cifras de hinários, projetada especialmente para líderes de adoração e músicos.",
