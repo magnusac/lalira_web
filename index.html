@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="meta_title">La Lira - Himnario & Acordes Aplicación Móvil</title>
+  <meta name="description" content="La Lira es una aplicación móvil premium para letras y acordes de himnarios y música de adoración. Transpón tonos, crea listas y accede sin conexión." data-i18n="meta_desc">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <!-- Glassmorphic Header -->
+  <header class="header" id="header">
+    <div class="container">
+      <a href="#" class="logo" id="logo-link">
+        <img src="./assets/logo.svg" alt="La Lira" class="logo-icon">
+        La Lira
+      </a>
+      
+      <button class="menu-toggle" id="menu-toggle" aria-label="Toggle Navigation" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <ul class="nav-menu" id="nav-menu">
+        <li><a href="#features" class="nav-link" data-i18n="nav_features">Características</a></li>
+        <li><a href="#faq" class="nav-link" data-i18n="nav_faq">FAQ</a></li>
+        <li><a href="#download" class="nav-link nav-cta" data-i18n="nav_download">Descargar App</a></li>
+        <li class="lang-selector-container">
+          <div class="lang-selector">
+            <button class="lang-btn active" data-lang="es">ES</button>
+            <button class="lang-btn" data-lang="pt">PT</button>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero" id="hero">
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-tag" data-i18n="hero_tag">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+          </svg>
+          Versión 1.0.0 Ya Disponible
+        </div>
+        <h1 class="hero-title" data-i18n="hero_title">La Alabanza <br><span>en tus manos.</span></h1>
+        <p class="hero-desc" data-i18n="hero_desc">Accede a las letras de todos tus himnos favoritos en una hermosa interfaz preparada para usar sin conexión. Encuentra canciones al instante, ajusta modos de lectura y organiza listas de reproducción con arrastrar y soltar. ¡Vista previa de transposición de acordes disponible en V3!</p>
+        
+        <div class="hero-buttons">
+          <!-- App Store Button -->
+          <a href="#" class="btn-store" id="hero-btn-appstore">
+            <svg class="btn-store-icon" viewBox="0 0 24 24">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-1 .04-2.2.67-2.92 1.49-.62.71-1.16 1.85-1.01 2.96 1.12.09 2.27-.58 2.94-1.39z"/>
+            </svg>
+            <div class="btn-store-text">
+              <span data-i18n="download_app_store">Download on the</span>
+              <span>App Store</span>
+            </div>
+          </a>
+
+          <!-- Google Play Button -->
+          <a href="#" class="btn-store" id="hero-btn-playstore">
+            <svg class="btn-store-icon" viewBox="0 0 24 24">
+              <path d="M5.25 3.06a3 3 0 0 0-1.25.5v16.88a3 3 0 0 0 1.25.5l9.28-9.44L5.25 3.06zM15.75 12l2.36 2.4 2.89-1.65a2.58 2.58 0 0 0 0-4.5l-2.89-1.65L15.75 12zm-1.89-1.92l4.89-4.98L5.94 3.75l7.92 6.33zm0 3.84L5.94 20.25l12.81-1.35-4.89-4.98z"/>
+            </svg>
+            <div class="btn-store-text">
+              <span data-i18n="download_google_play">GET IT ON</span>
+              <span>Google Play</span>
+            </div>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Mockup Display Container (Carousel) -->
+      <div class="hero-mockup">
+        <div class="mockup-glow"></div>
+        <div class="phone-container">
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="carousel-track">
+                <div class="carousel-slide active">
+                  <img src="./assets/screen_home.png" alt="Pantalla de Inicio - La Lira" class="carousel-img">
+                </div>
+                <div class="carousel-slide">
+                  <img src="./assets/screen_categories.png" alt="Categorías de Himnarios - La Lira" class="carousel-img">
+                </div>
+                <div class="carousel-slide">
+                  <img src="./assets/screen_detail.png" alt="Lista de Himnos - La Lira" class="carousel-img">
+                </div>
+              </div>
+            </div>
+            <!-- Navigation buttons -->
+            <button class="carousel-btn prev-btn" aria-label="Anterior">
+              <svg viewBox="0 0 24 24"><path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="carousel-btn next-btn" aria-label="Siguiente">
+              <svg viewBox="0 0 24 24"><path fill="currentColor" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6-6-6z"/></svg>
+            </button>
+          </div>
+          <!-- Indicators -->
+          <div class="carousel-indicators">
+            <span class="indicator active" data-index="0"></span>
+            <span class="indicator" data-index="1"></span>
+            <span class="indicator" data-index="2"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Grid Section -->
+  <section class="section features" id="features">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag" data-i18n="features_tag">Diseñado para la Adoración</span>
+        <h2 class="section-title" data-i18n="features_title">Todo lo que necesitas, dondequiera que estés</h2>
+        <p class="section-desc" data-i18n="features_desc">Hemos desarrollado La Lira desde cero para resolver los problemas reales que enfrentan los músicos durante las sesiones en vivo y los ensayos.</p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="glass-panel feature-card" id="feature-card-transpose">
+          <div class="feature-icon-wrapper">
+            <svg class="feature-icon" viewBox="0 0 24 24">
+              <path d="M12 5.83L15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15l-3 3.17z"/>
+            </svg>
+          </div>
+          <h3 class="feature-title" data-i18n="feat_transpose_title">Cifras (Hoja de Ruta)</h3>
+          <p class="feature-desc" data-i18n="feat_transpose_desc">Las cifras alineadas con las sílabas y la transposición dinámica de tonos están en desarrollo activo y programadas para la versión V3. ¡Prueba la vista previa interactiva abajo!</p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="glass-panel feature-card" id="feature-card-offline">
+          <div class="feature-icon-wrapper">
+            <svg class="feature-icon" viewBox="0 0 24 24">
+              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/>
+            </svg>
+          </div>
+          <h3 class="feature-title" data-i18n="feat_offline_title">Base de Datos Offline</h3>
+          <p class="feature-desc" data-i18n="feat_offline_desc">¿Mala señal en la iglesia? No hay problema. La Lira funciona con una base de datos SQLite local, cargando letras al instante y almacenando todo en tu dispositivo sin requerir red.</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="glass-panel feature-card" id="feature-card-playlists">
+          <div class="feature-icon-wrapper">
+            <svg class="feature-icon" viewBox="0 0 24 24">
+              <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z"/>
+            </svg>
+          </div>
+          <h3 class="feature-title" data-i18n="feat_playlists_title">Listas de Reproducción</h3>
+          <p class="feature-desc" data-i18n="feat_playlists_desc">Organiza fácilmente listas de himnos para los cultos. Arrastra y suelta canciones para reordenarlas, y desliza entre páginas limpiamente durante la adoración.</p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="glass-panel feature-card" id="feature-card-search">
+          <div class="feature-icon-wrapper">
+            <svg class="feature-icon" viewBox="0 0 24 24">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+          </div>
+          <h3 class="feature-title" data-i18n="feat_search_title">Búsqueda SQLite FTS5</h3>
+          <p class="feature-desc" data-i18n="feat_search_desc">Encuentra himnos en milisegundos por número, título o letra usando Búsqueda de Texto Completo. Los resultados se filtran dinámicamente en los himnarios Principal, Niños y Anexo.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- FAQ Section -->
+  <section class="section" id="faq">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag" data-i18n="faq_tag">Preguntas Frecuentes</span>
+        <h2 class="section-title" data-i18n="faq_title">¿Tienes Preguntas? Tenemos Respuestas</h2>
+      </div>
+
+      <div style="max-width: 750px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.25rem;">
+        <!-- FAQ 1 -->
+        <div class="glass-panel" style="padding: 1.5rem 2rem; cursor: pointer;" onclick="toggleFaq(this)">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 1.15rem; font-weight: 600;" data-i18n="faq_1_q">¿La Lira admite otros idiomas?</h3>
+            <svg class="faq-chevron" style="width: 20px; height: 20px; transition: transform 0.3s; fill: var(--text-muted);" viewBox="0 0 24 24">
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </div>
+          <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease, margin-top 0.3s ease;">
+            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.95rem;" data-i18n="faq_1_a">¡Sí! La Lira incluye soporte completo de traducción e himnos en español y portugués, lo que te permite cambiar de biblioteca fácilmente desde el panel de configuración.</p>
+          </div>
+        </div>
+
+        <!-- FAQ 2 -->
+        <div class="glass-panel" style="padding: 1.5rem 2rem; cursor: pointer;" onclick="toggleFaq(this)">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 1.15rem; font-weight: 600;" data-i18n="faq_2_q">¿Cuándo estarán disponibles las cifras y la transposición de tonos?</h3>
+            <svg class="faq-chevron" style="width: 20px; height: 20px; transition: transform 0.3s; fill: var(--text-muted);" viewBox="0 0 24 24">
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </div>
+          <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease, margin-top 0.3s ease;">
+            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.95rem;" data-i18n="faq_2_a">La Lira V1.0.0 está enfocada en ofrecer un lector de letras rápido y sin conexión. Las cifras alineadas, importadores ChordPro y transposición de tonos están programados para el lanzamiento de la versión V3.</p>
+          </div>
+        </div>
+
+        <!-- FAQ 3 -->
+        <div class="glass-panel" style="padding: 1.5rem 2rem; cursor: pointer;" onclick="toggleFaq(this)">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 1.15rem; font-weight: 600;" data-i18n="faq_3_q">¿Tiene algún costo usar la aplicación La Lira?</h3>
+            <svg class="faq-chevron" style="width: 20px; height: 20px; transition: transform 0.3s; fill: var(--text-muted);" viewBox="0 0 24 24">
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </div>
+          <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease, margin-top 0.3s ease;">
+            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.95rem;" data-i18n="faq_3_a">La Lira es 100% gratuita para descargar y usar de forma local. La sincronización colaborativa de listas y copias de seguridad en la nube están planeadas para un plan premium en la versión V2.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Call-to-Action Section -->
+  <section class="section cta-section" id="download">
+    <div class="container">
+      <div class="glass-panel cta-box">
+        <div class="cta-glow"></div>
+        <h2 class="cta-title" data-i18n="cta_title">¿Listo para Guiar la Adoración sin Esfuerzo?</h2>
+        <p class="cta-desc" data-i18n="cta_desc">Únete a miles de músicos que usan La Lira para simplificar la gestión de sus cantos. Disponible ahora para dispositivos iOS y Android.</p>
+        
+        <div class="cta-downloads">
+          <!-- App Store -->
+          <a href="#" class="btn-store" id="cta-btn-appstore">
+            <svg class="btn-store-icon" viewBox="0 0 24 24">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-1 .04-2.2.67-2.92 1.49-.62.71-1.16 1.85-1.01 2.96 1.12.09 2.27-.58 2.94-1.39z"/>
+            </svg>
+            <div class="btn-store-text">
+              <span data-i18n="download_app_store">Download on the</span>
+              <span>App Store</span>
+            </div>
+          </a>
+
+          <!-- Google Play -->
+          <a href="#" class="btn-store" id="cta-btn-playstore">
+            <svg class="btn-store-icon" viewBox="0 0 24 24">
+              <path d="M5.25 3.06a3 3 0 0 0-1.25.5v16.88a3 3 0 0 0 1.25.5l9.28-9.44L5.25 3.06zM15.75 12l2.36 2.4 2.89-1.65a2.58 2.58 0 0 0 0-4.5l-2.89-1.65L15.75 12zm-1.89-1.92l4.89-4.98L5.94 3.75l7.92 6.33zm0 3.84L5.94 20.25l12.81-1.35-4.89-4.98z"/>
+            </svg>
+            <div class="btn-store-text">
+              <span data-i18n="download_google_play">GET IT ON</span>
+              <span>Google Play</span>
+            </div>
+          </a>
+
+          <!-- QR Code Divider -->
+          <div style="width: 1px; height: 50px; background: var(--border-glass); margin: 0 1.5rem;" class="menu-toggle"></div>
+
+          <!-- QR Code Badge Placeholder -->
+          <div style="display: flex; align-items: center; gap: 1rem; text-align: left; background: rgba(0, 0, 0, 0.04); padding: 0.75rem 1.25rem; border-radius: 16px; border: 1px solid var(--border-glass);" id="qr-code-container">
+            <!-- Simulated QR Code SVG -->
+            <svg width="64" height="64" viewBox="0 0 100 100" style="fill: var(--text-primary);">
+              <path d="M0 0h30v30H0V0zm10 10v10h10V10H10zm60-10h30v30H70V0zm10 10v10h10V10H80zM0 70h30v30H0V70zm10 10v10h10V10H10zm35-80h10v10h-10zm10 20h10v10h-10zm-10 10h10v10h-10zm10 10h10v10h-10zm-10 10h10v10h-10zm25 20h10v10h-10zm-15 10h10v10h-10zm25 0h10v10h-10zm10-10h10v10H90zm-10-10h10v10h-10zm-10 0h10v10h-10zm-15 0h10v10h-10zm-10 0h10v10h-10zM55 80h10v10h-10z"/>
+            </svg>
+            <div style="line-height: 1.3;">
+              <span style="font-size: 0.95rem; font-weight: 700; display: block; color: var(--text-primary);" data-i18n="scan_to_download">Escanea para Descargar</span>
+              <span style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-top: 2px;" data-i18n="scan_compatible">Compatible con iOS y Android</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer Section -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="logo">
+            <img src="./assets/logo.svg" alt="La Lira" class="logo-icon">
+            La Lira
+          </a>
+          <p class="footer-desc" data-i18n="footer_desc">Una solución premium para la gestión de letras y acordes de himnarios, diseñada especialmente para directores de alabanza y músicos.</p>
+        </div>
+
+        <div>
+          <h4 class="footer-links-title" data-i18n="footer_resources">Recursos</h4>
+          <ul class="footer-links-list">
+            <li><a href="#features" class="footer-link" data-i18n="nav_features">Características</a></li>
+            <li><a href="#faq" class="footer-link" data-i18n="nav_faq">FAQ</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-links-title" data-i18n="footer_legal">Legal</h4>
+          <ul class="footer-links-list">
+            <li><a href="./terms.html" class="footer-link" id="footer-terms-link" data-i18n="footer_terms">Términos y Condiciones</a></li>
+            <li><a href="./privacy.html" class="footer-link" id="footer-privacy-link" data-i18n="footer_privacy">Política de Privacidad</a></li>
+            <li><a href="mailto:support@lalira.com" class="footer-link" data-i18n="footer_support">Contacto de Soporte</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p data-i18n="copyright">© 2026 La Lira. Todos los derechos reservados.</p>
+        
+        <div class="footer-socials">
+          <a href="#" aria-label="Facebook">
+            <svg class="social-icon" viewBox="0 0 24 24"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.8v8.37h2.8v-4.87c0-.26.05-.52.13-.7a1.11 1.11 0 0 1 1-.72c.62 0 1.09.48 1.09 1.19v5.1m-9.8-8.37h2.8v8.37h-2.8V9.63m1.4-1.27a1.62 1.62 0 1 0 0-3.24 1.62 1.62 0 0 0 0 3.24z"/></svg>
+          </a>
+          <a href="#" aria-label="Twitter">
+            <svg class="social-icon" viewBox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.52 8.52 0 0 1-5.31 1.83c-.34 0-.68-.02-1.02-.06C3.9 20.29 6.18 21 8.63 21 16.63 21 21 14.37 21 8.62v-.56c.85-.6 1.58-1.37 2.17-2.23z"/></svg>
+          </a>
+          <a href="#" aria-label="Instagram">
+            <svg class="social-icon" viewBox="0 0 24 24"><path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8C4 18.4 5.6 20 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6C20 5.6 18.4 4 16.4 4H7.6m8.9 3.3a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module" src="./i18n.js"></script>
+  <script type="module" src="./main.js"></script>
+  
+  <script>
+    // FAQ collapsing toggle function
+    function toggleFaq(card) {
+      const answer = card.querySelector('.faq-answer');
+      const chevron = card.querySelector('.faq-chevron');
+      const allAnswers = document.querySelectorAll('.faq-answer');
+      const allChevrons = document.querySelectorAll('.faq-chevron');
+      
+      // Close other answers for clean accordion behavior
+      allAnswers.forEach((ans, idx) => {
+        if (ans !== answer) {
+          ans.style.maxHeight = null;
+          allChevrons[idx].style.transform = 'rotate(0deg)';
+        }
+      });
+
+      if (answer.style.maxHeight) {
+        answer.style.maxHeight = null;
+        chevron.style.transform = 'rotate(0deg)';
+      } else {
+        answer.style.maxHeight = answer.scrollHeight + "px";
+        chevron.style.transform = 'rotate(180deg)';
+      }
+    }
+  </script>
+</body>
+</html>
