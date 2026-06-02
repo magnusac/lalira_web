@@ -209,6 +209,20 @@ a {
   box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
 }
 
+.header-socials {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.header-socials .social-icon {
+  fill: var(--text-secondary);
+}
+
+.header-socials .social-icon:hover {
+  fill: var(--text-primary);
+}
+
 .menu-toggle {
   display: none;
   flex-direction: column;

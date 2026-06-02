@@ -25,8 +25,8 @@ const translations = {
     features_title: "Todo lo que necesitas, dondequiera que estés",
     features_desc: "Hemos desarrollado La Lira desde cero para resolver los problemas reales que enfrentan los músicos durante las sesiones en vivo y los ensayos.",
     
-    feat_transpose_title: "Cifras (Hoja de Ruta)",
-    feat_transpose_desc: "Las cifras alineadas con las sílabas y la transposición dinámica de tonos están en desarrollo activo y programadas para la versión V3.",
+    feat_transpose_title: "Lectura y Navegación",
+    feat_transpose_desc: "Accede a las letras de todas las canciones de forma rápida, navega por el himnario en múltiples idiomas y lee los himnos cómodamente en cualquier momento.",
     
     feat_offline_title: "Siempre Disponible",
     feat_offline_desc: "¿Mala señal en la iglesia? No hay problema. La Lira funciona de forma local en tu dispositivo, cargando letras al instante y almacenando todo sin necesidad de internet.",
@@ -81,7 +81,7 @@ const translations = {
     terms_sec5_h2: "5. Acceso al Contenido",
     terms_sec5_p: "El Titular garantiza que la totalidad del Contenido de La Lira App es de acceso libre y gratuito para todos los Usuarios. Ningún himno, letra ni texto quedará bloqueado, restringido ni condicionado por razones económicas. Las actualizaciones del Contenido —nuevos himnos, correcciones de letra— serán igualmente gratuitas. La Aplicación no requiere registro para acceder al Contenido en esta versión.",
     terms_sec6_h2: "6. Derechos de Autor del Contenido",
-    terms_sec6_p: "Los himnos y textos en dominio público —cuya letra, melodía y arreglo original son anteriores a 1930— se reproducen sin restricción de derechos de autor, de conformidad con la legislación aplicable. Los himnos o arreglos sujetos a derechos de autor vigentes se incluyen bajo las licencias correspondientes obtenidas por el Titular. El estado de cada himno —dominio público o con licencia— se indica en su ficha informativa dentro de la Aplicación.<br><br>El Usuario no adquiere ningún derecho de reproducción, distribución ni ejecución pública sobre el Contenido por el solo uso de la Aplicación. La impresión, copia o uso del Contenido en contextos de ejecución pública puede requerir licencias adicionales ante organismos de gestión colectiva que el Usuario deberá gestionar por su cuenta.",
+    terms_sec6_p: "Los himnos y textos en dominio público —cuya letra, melodía y arreglo original son anteriores a 1930— se reproducen sin restricción de derechos de autor, de conformidad con la legislación aplicable. Los himnos o arreglos sujetos a derechos de autor vigentes se incluyen bajo las licencias correspondientes obtenidas por el Titular.<br><br>El Usuario no adquiere ningún derecho de reproducción, distribución ni ejecución pública sobre el Contenido por el solo uso de la Aplicación. La impresión, copia o uso del Contenido en contextos de ejecución pública puede requerir licencias adicionales ante organismos de gestión colectiva que el Usuario deberá gestionar por su cuenta.",
     terms_sec7_h2: "7. Propiedad Intelectual de la Aplicación",
     terms_sec7_p: "La Aplicación en sí misma —incluyendo su código fuente, diseño, interfaces, logotipos y nombre La Lira App— es propiedad exclusiva del Titular y está protegida por las leyes de propiedad intelectual. Queda expresamente prohibida su reproducción, modificación o distribución sin autorización escrita del Titular.",
     terms_sec8_h2: "8. Conducta del Usuario",
@@ -155,8 +155,8 @@ const translations = {
     features_title: "Tudo o que você precisa, onde quer que esteja",
     features_desc: "Desenvolvemos o La Lira do zero para resolver os problemas reais que os músicos enfrentam em apresentações ao vivo e ensaios.",
     
-    feat_transpose_title: "Cifras (Roadmap)",
-    feat_transpose_desc: "Cifras alinhadas por sílaba e transposição dinâmica de tons estão em desenvolvimento ativo e planejadas para a versão V3.",
+    feat_transpose_title: "Leitura e Navegação",
+    feat_transpose_desc: "Acesse as letras de todas as músicas de forma rápida, navegue pelo hinário em múltiplos idiomas e leia os hinos confortavelmente a qualquer momento.",
     
     feat_offline_title: "Sempre Disponível",
     feat_offline_desc: "Sinal ruim na igreja? Sem problemas. O La Lira funciona de forma local no seu dispositivo, carregando as letras instantaneamente e armazenando tudo sem necessidade de internet.",
@@ -211,7 +211,7 @@ const translations = {
     terms_sec5_h2: "5. Acesso ao Conteúdo",
     terms_sec5_p: "O Titular garante que a totalidade do Conteúdo do La Lira App é de acesso livre e gratuito para todos os Usuários. Nenhum hino, letra ou texto será bloqueado, restrito ou condicionado por razões econômicas. As atualizações de Conteúdo —novos hinos, correções de letras— serão igualmente gratuitas. O Aplicativo não requer registro para acessar o Conteúdo nesta versão.",
     terms_sec6_h2: "6. Direitos Autorais do Conteúdo",
-    terms_sec6_p: "Os hinos e textos em domínio público —cuja letra, melodia e arranjo original são anteriores a 1930— são reproduzidos sem restrição de direitos autorais, de acordo com a legislação aplicável. Os hinos ou arranjos sujeitos a direitos autorais vigentes são incluídos sob as licenças correspondentes obtidas pelo Titular. O status de cada hino —domínio público ou licenciado— é indicado em sua ficha informativa no Aplicativo.<br><br>O Usuário não adquire nenhum direito de reprodução, distribuição ou execução pública sobre o Conteúdo pelo simples uso do Aplicativo. A impressão, cópia ou uso do Conteúdo em contextos de execução pública pode exigir licenças adicionais de órgãos de gestão coletiva que o Usuário deverá gerenciar por conta própria.",
+    terms_sec6_p: "Os hinos e textos em domínio público —cuja letra, melodia e arranjo original são anteriores a 1930— são reproduzidos sem restrição de direitos autorais, de acordo com a legislação aplicável. Os hinos ou arranjos sujeitos a direitos autorais vigentes são incluídos sob as licenças correspondentes obtidas pelo Titular.<br><br>O Usuário não adquire nenhum direito de reprodução, distribuição ou execução pública sobre o Conteúdo pelo simples uso do Aplicativo. A impressão, cópia ou uso do Conteúdo em contextos de execução pública pode exigir licenças adicionais de órgãos de gestão coletiva que o Usuário deverá gerenciar por conta própria.",
     terms_sec7_h2: "7. Propriedade Intelectual do Aplicativo",
     terms_sec7_p: "O Aplicativo em si —incluindo seu código-fonte, design, interfaces, logotipos e o nome La Lira App— é de propriedade exclusiva do Titular e está protegido pelas leis chilenas e internacionais de propriedade intelectual. É expressamente proibida sua reprodução, modificação ou distribuição sem autorização por escrito do Titular.",
     terms_sec8_h2: "8. Conduta do Usuário",
