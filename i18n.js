@@ -2,14 +2,14 @@
 const translations = {
   es: {
     // Nav & Meta
-    meta_title: "La Lira - Himnario & Acordes Aplicación Móvil",
+    meta_title: "La Lira App - Himnario & Acordes",
     meta_desc: "La Lira es una aplicación móvil premium para letras y acordes de himnarios y música de adoración. Transpón tonos, crea listas y accede sin conexión.",
     nav_features: "Características",
     nav_faq: "FAQ",
     nav_download: "Descargar App",
     nav_back: "Volver al Inicio",
     back_to_home: "Volver al Inicio",
-    copyright: "© 2026 La Lira. Todos los derechos reservados.",
+    copyright: "© 2026 La Lira App. Todos los derechos reservados.",
 
     // Hero Section
     hero_tag: "Disponible Pronto",
@@ -57,7 +57,7 @@ const translations = {
     cta_desc: "La primera versión de La Lira estará disponible pronto. Prepárate para acceder a tus himnos favoritos de forma fácil y rápida, directamente en tu dispositivo.",
 
     // Footer Links
-    footer_desc: "La Alabanza en tus manos.",
+    footer_desc: "La Alabanza en tus manos. Una herramienta simple y moderna diseñada para llevar la adoración contigo a donde vayas.",
     footer_resources: "Recursos",
     footer_legal: "Legal",
     footer_terms: "Términos y Condiciones",
@@ -116,14 +116,14 @@ const translations = {
   },
   pt: {
     // Nav & Meta
-    meta_title: "La Lira - Hinário & Acordes Aplicativo Móvel",
+    meta_title: "La Lira App - Hinário & Acordes",
     meta_desc: "La Lira é um aplicativo móvel premium para letras e cifras de hinários e música de adoração. Transponha tons, crie playlists e acesse offline.",
     nav_features: "Recursos",
     nav_faq: "FAQ",
     nav_download: "Baixar App",
     nav_back: "Voltar ao Início",
     back_to_home: "Voltar ao Início",
-    copyright: "© 2026 La Lira. Todos os direitos reservados.",
+    copyright: "© 2026 La Lira App. Todos os direitos reservados.",
 
     // Hero Section
     hero_tag: "Disponível em Breve",
@@ -171,7 +171,7 @@ const translations = {
     cta_desc: "A primeira versão do La Lira estará disponível em breve. Prepare-se para acessar seus hinos favoritos de forma fácil e rápida, diretamente no seu dispositivo.",
 
     // Footer Links
-    footer_desc: "O Louvor em suas mãos.",
+    footer_desc: "O Louvor em suas mãos. Uma ferramenta simples e moderna projetada para levar a adoração com você aonde for.",
     footer_resources: "Recursos",
     footer_legal: "Legal",
     footer_terms: "Termos e Condições",
