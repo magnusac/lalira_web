@@ -14,9 +14,9 @@ const translations = {
     // Hero Section
     hero_tag: "Disponible Pronto",
     hero_title: "La Alabanza <br><span>en tus manos.</span>",
-    hero_desc: "Accede a las letras de todos tus himnos favoritos en una hermosa interfaz preparada para usar sin conexión. Encuentra canciones al instante, ajusta modos de lectura y organiza listas de alabanzas con arrastrar y soltar. ¡Vista previa de transposición de acordes disponible en V3!",
-    download_app_store: "Download on the",
-    download_google_play: "GET IT ON",
+    hero_desc: "Tus alabanzas favoritas, siempre contigo. Accede a letras y acordes sin conexión, organiza tus listas al instante y descarga partituras completas para instrumentos y voces en una interfaz simple y moderna.",
+    download_app_store: "Disponible pronto en",
+    download_google_play: "Disponible pronto en",
     scan_to_download: "Próximamente",
     scan_compatible: "Para dispositivos iOS y Android",
 
@@ -128,9 +128,9 @@ const translations = {
     // Hero Section
     hero_tag: "Disponível em Breve",
     hero_title: "O Louvor <br><span>em suas mãos.</span>",
-    hero_desc: "Acesse a letra de todos os seus hinos favoritos em uma interface linda e pronta para usar offline. Encontre músicas instantaneamente, ajuste modos de leitura e organize listas de louvores com arrastar e soltar. Prévia de transposição de acordes chegando na V3!",
-    download_app_store: "Baixar na",
-    download_google_play: "DISPONÍVEL NO",
+    hero_desc: "Seus louvores favoritos, sempre com você. Acesse letras e acordes sem conexão, organize suas listas instantaneamente e baixe partituras completas para instrumentos e vozes em uma interface simples e moderna.",
+    download_app_store: "Disponível em breve na",
+    download_google_play: "Disponível em breve no",
     scan_to_download: "Em Breve",
     scan_compatible: "Para dispositivos iOS e Android",
 
