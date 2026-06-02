@@ -57,7 +57,7 @@ const translations = {
     cta_desc: "La primera versión de La Lira estará disponible pronto. Prepárate para acceder a tus himnos favoritos de forma fácil y rápida, directamente en tu dispositivo.",
 
     // Footer Links
-    footer_desc: "Una solución premium para la gestión de letras y acordes de himnarios, diseñada especialmente para directores de alabanza y músicos.",
+    footer_desc: "La Alabanza en tus manos.",
     footer_resources: "Recursos",
     footer_legal: "Legal",
     footer_terms: "Términos y Condiciones",
@@ -171,7 +171,7 @@ const translations = {
     cta_desc: "A primeira versão do La Lira estará disponível em breve. Prepare-se para acessar seus hinos favoritos de forma fácil e rápida, diretamente no seu dispositivo.",
 
     // Footer Links
-    footer_desc: "Uma solução premium para gestão de letras e cifras de hinários, projetada especialmente para líderes de adoração e músicos.",
+    footer_desc: "O Louvor em suas mãos.",
     footer_resources: "Recursos",
     footer_legal: "Legal",
     footer_terms: "Termos e Condições",
