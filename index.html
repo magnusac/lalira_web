@@ -25,8 +25,6 @@
 
       <ul class="nav-menu" id="nav-menu">
         <li><a href="#features" class="nav-link" data-i18n="nav_features">Características</a></li>
-        <li><a href="#faq" class="nav-link" data-i18n="nav_faq">FAQ</a></li>
-        <li><a href="#download" class="nav-link nav-cta" data-i18n="nav_download">Descargar App</a></li>
         <li class="lang-selector-container">
           <div class="lang-selector">
             <button class="lang-btn active" data-lang="es">ES</button>
@@ -171,107 +169,6 @@
   </section>
 
 
-  <!-- FAQ Section -->
-  <section class="section" id="faq">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-tag" data-i18n="faq_tag">Preguntas Frecuentes</span>
-        <h2 class="section-title" data-i18n="faq_title">¿Tienes Preguntas? Tenemos Respuestas</h2>
-      </div>
-
-      <div style="max-width: 750px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.25rem;">
-        <!-- FAQ 1 -->
-        <div class="glass-panel" style="padding: 1.5rem 2rem; cursor: pointer;" onclick="toggleFaq(this)">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="font-size: 1.15rem; font-weight: 600;" data-i18n="faq_1_q">¿La Lira admite otros idiomas?</h3>
-            <svg class="faq-chevron" style="width: 20px; height: 20px; transition: transform 0.3s; fill: var(--text-muted);" viewBox="0 0 24 24">
-              <path d="M7 10l5 5 5-5z"/>
-            </svg>
-          </div>
-          <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease, margin-top 0.3s ease;">
-            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.95rem;" data-i18n="faq_1_a">¡Sí! La Lira incluye soporte completo de traducción e himnos en español y portugués, lo que te permite cambiar de biblioteca fácilmente desde el panel de configuración.</p>
-          </div>
-        </div>
-
-        <!-- FAQ 2 -->
-        <div class="glass-panel" style="padding: 1.5rem 2rem; cursor: pointer;" onclick="toggleFaq(this)">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="font-size: 1.15rem; font-weight: 600;" data-i18n="faq_2_q">¿Cuándo estarán disponibles las cifras y la transposición de tonos?</h3>
-            <svg class="faq-chevron" style="width: 20px; height: 20px; transition: transform 0.3s; fill: var(--text-muted);" viewBox="0 0 24 24">
-              <path d="M7 10l5 5 5-5z"/>
-            </svg>
-          </div>
-          <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease, margin-top 0.3s ease;">
-            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.95rem;" data-i18n="faq_2_a">La Lira V1.0.0 está enfocada en ofrecer un lector de letras rápido y sin conexión. Las cifras alineadas, importadores ChordPro y transposición de tonos están programados para el lanzamiento de la versión V3.</p>
-          </div>
-        </div>
-
-        <!-- FAQ 3 -->
-        <div class="glass-panel" style="padding: 1.5rem 2rem; cursor: pointer;" onclick="toggleFaq(this)">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="font-size: 1.15rem; font-weight: 600;" data-i18n="faq_3_q">¿Tiene algún costo usar la aplicación La Lira?</h3>
-            <svg class="faq-chevron" style="width: 20px; height: 20px; transition: transform 0.3s; fill: var(--text-muted);" viewBox="0 0 24 24">
-              <path d="M7 10l5 5 5-5z"/>
-            </svg>
-          </div>
-          <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease, margin-top 0.3s ease;">
-            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.95rem;" data-i18n="faq_3_a">La Lira es 100% gratuita para descargar y usar de forma local. La sincronización colaborativa de listas y copias de seguridad en la nube están planeadas para un plan premium en la versión V2.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Download Call-to-Action Section -->
-  <section class="section cta-section" id="download">
-    <div class="container">
-      <div class="glass-panel cta-box">
-        <div class="cta-glow"></div>
-        <h2 class="cta-title" data-i18n="cta_title">¿Listo para tener la alabanza en tus manos?</h2>
-        <p class="cta-desc" data-i18n="cta_desc">La primera versión de La Lira estará disponible pronto. Prepárate para acceder a tus himnos favoritos de forma fácil y rápida, directamente en tu dispositivo.</p>
-        
-        <div class="cta-downloads">
-          <!-- App Store -->
-          <a href="#" class="btn-store" id="cta-btn-appstore">
-            <svg class="btn-store-icon" viewBox="0 0 24 24">
-              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-1 .04-2.2.67-2.92 1.49-.62.71-1.16 1.85-1.01 2.96 1.12.09 2.27-.58 2.94-1.39z"/>
-            </svg>
-            <div class="btn-store-text">
-              <span data-i18n="download_app_store">Disponible pronto en</span>
-              <span>App Store</span>
-            </div>
-          </a>
-
-          <!-- Google Play -->
-          <a href="#" class="btn-store" id="cta-btn-playstore">
-            <svg class="btn-store-icon" viewBox="0 0 24 24">
-              <path d="M5.25 3.06a3 3 0 0 0-1.25.5v16.88a3 3 0 0 0 1.25.5l9.28-9.44L5.25 3.06zM15.75 12l2.36 2.4 2.89-1.65a2.58 2.58 0 0 0 0-4.5l-2.89-1.65L15.75 12zm-1.89-1.92l4.89-4.98L5.94 3.75l7.92 6.33zm0 3.84L5.94 20.25l12.81-1.35-4.89-4.98z"/>
-            </svg>
-            <div class="btn-store-text">
-              <span data-i18n="download_google_play">Disponible pronto en</span>
-              <span>Google Play</span>
-            </div>
-          </a>
-
-          <!-- QR Code Divider -->
-          <div style="width: 1px; height: 50px; background: var(--border-glass); margin: 0 1.5rem;" class="menu-toggle"></div>
-
-          <!-- QR Code Badge Placeholder -->
-          <div style="display: flex; align-items: center; gap: 1rem; text-align: left; background: rgba(0, 0, 0, 0.04); padding: 0.75rem 1.25rem; border-radius: 16px; border: 1px solid var(--border-glass);" id="qr-code-container">
-            <!-- Simulated QR Code SVG -->
-            <svg width="64" height="64" viewBox="0 0 100 100" style="fill: var(--text-primary);">
-              <path d="M0 0h30v30H0V0zm10 10v10h10V10H10zm60-10h30v30H70V0zm10 10v10h10V10H80zM0 70h30v30H0V70zm10 10v10h10V10H10zm35-80h10v10h-10zm10 20h10v10h-10zm-10 10h10v10h-10zm10 10h10v10h-10zm-10 10h10v10h-10zm25 20h10v10h-10zm-15 10h10v10h-10zm25 0h10v10h-10zm10-10h10v10H90zm-10-10h10v10h-10zm-10 0h10v10h-10zm-15 0h10v10h-10zm-10 0h10v10h-10zM55 80h10v10h-10z"/>
-            </svg>
-            <div style="line-height: 1.3;">
-              <span style="font-size: 0.95rem; font-weight: 700; display: block; color: var(--text-primary);" data-i18n="scan_to_download">Próximamente</span>
-              <span style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-top: 2px;" data-i18n="scan_compatible">Para dispositivos iOS y Android</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- Footer Section -->
   <footer class="footer">
     <div class="container">
@@ -288,7 +185,6 @@
           <h4 class="footer-links-title" data-i18n="footer_resources">Recursos</h4>
           <ul class="footer-links-list">
             <li><a href="#features" class="footer-link" data-i18n="nav_features">Características</a></li>
-            <li><a href="#faq" class="footer-link" data-i18n="nav_faq">FAQ</a></li>
           </ul>
         </div>
 
@@ -323,30 +219,6 @@
   <script type="module" src="./i18n.js"></script>
   <script type="module" src="./main.js"></script>
   
-  <script>
-    // FAQ collapsing toggle function
-    function toggleFaq(card) {
-      const answer = card.querySelector('.faq-answer');
-      const chevron = card.querySelector('.faq-chevron');
-      const allAnswers = document.querySelectorAll('.faq-answer');
-      const allChevrons = document.querySelectorAll('.faq-chevron');
-      
-      // Close other answers for clean accordion behavior
-      allAnswers.forEach((ans, idx) => {
-        if (ans !== answer) {
-          ans.style.maxHeight = null;
-          allChevrons[idx].style.transform = 'rotate(0deg)';
-        }
-      });
 
-      if (answer.style.maxHeight) {
-        answer.style.maxHeight = null;
-        chevron.style.transform = 'rotate(0deg)';
-      } else {
-        answer.style.maxHeight = answer.scrollHeight + "px";
-        chevron.style.transform = 'rotate(180deg)';
-      }
-    }
-  </script>
 </body>
 </html>
