@@ -25,7 +25,7 @@ const translations = {
     features_title: "Todo lo que necesitas, dondequiera que estés",
     features_desc: "Hemos desarrollado La Lira desde cero para resolver los problemas reales que enfrentan los músicos durante las sesiones en vivo y los ensayos.",
     
-    feat_transpose_title: "Lectura y Navegación",
+    feat_transpose_title: "Himnario, fácil y accesible",
     feat_transpose_desc: "Accede a las letras de todas las canciones de forma rápida, navega por el himnario en múltiples idiomas y lee los himnos cómodamente en cualquier momento.",
     
     feat_offline_title: "Siempre Disponible",
@@ -35,7 +35,7 @@ const translations = {
     feat_playlists_desc: "Organiza fácilmente listas de alabanzas para los cultos. Arrastra y suelta canciones para reordenarlas, y desliza entre páginas limpiamente durante la adoración.",
     
     feat_search_title: "Búsquedas Avanzadas",
-    feat_search_desc: "Encuentra himnos al instante por número, título o letra. Los resultados se filtran de forma rápida y con mejores resultados en los himnarios Principal, Niños y Anexo.",
+    feat_search_desc: "Encuentra himnos al instante por número, título o letra. Filtra los resultados de forma rápida por tema y navega de manera simple hacia tu próxima alabanza de adoración.",
 
 
 
@@ -155,7 +155,7 @@ const translations = {
     features_title: "Tudo o que você precisa, onde quer que esteja",
     features_desc: "Desenvolvemos o La Lira do zero para resolver os problemas reais que os músicos enfrentam em apresentações ao vivo e ensaios.",
     
-    feat_transpose_title: "Leitura e Navegação",
+    feat_transpose_title: "Hinário, fácil e acessível",
     feat_transpose_desc: "Acesse as letras de todas as músicas de forma rápida, navegue pelo hinário em múltiplos idiomas e leia os hinos confortavelmente a qualquer momento.",
     
     feat_offline_title: "Sempre Disponível",
@@ -165,7 +165,7 @@ const translations = {
     feat_playlists_desc: "Monte e ordene facilmente listas de hinos para os cultos. Arraste e solte músicas para reordená-las e passe de página de forma limpa durante a adoração.",
     
     feat_search_title: "Buscas Avançadas",
-    feat_search_desc: "Encontre hinos instantaneamente por número, título ou letra. Os resultados são filtrados de forma rápida e com melhores resultados nos hinários Principal, Infantil e Anexo.",
+    feat_search_desc: "Encontre hinos instantaneamente por número, título ou letra. Filtre os resultados de forma rápida por tema e navegue de maneira simples rumo ao seu próximo louvor de adoração.",
 
 
 
