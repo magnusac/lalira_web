@@ -121,6 +121,38 @@ document.addEventListener('DOMContentLoaded', () => {
       indicators.forEach((ind, i) => {
         ind.classList.toggle('active', i === currentIdx);
       });
+
+      // Handle video play/pause & autoplay suspension
+      const activeSlide = slides[currentIdx];
+      const video = activeSlide.querySelector('video');
+
+      // Pause and reset all videos in other slides
+      slides.forEach((slide, i) => {
+        if (i !== currentIdx) {
+          const vid = slide.querySelector('video');
+          if (vid) {
+            vid.pause();
+            vid.currentTime = 0;
+          }
+        }
+      });
+
+      if (video) {
+        // Stop normal autoplay timer
+        stopAutoPlay();
+        
+        // Play active video from start
+        video.currentTime = 0;
+        video.play().catch(err => console.log("Video auto-play interrupted:", err));
+        
+        // Advance to next slide once video finishes playing
+        video.onended = () => {
+          nextSlide();
+        };
+      } else {
+        // If not a video, resume/restart standard auto-play interval
+        startAutoPlay();
+      }
     }
     
     function nextSlide() {
@@ -134,24 +166,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event listeners for controls
     if (nextBtn) nextBtn.addEventListener('click', () => {
       nextSlide();
-      resetAutoPlay();
     });
     
     if (prevBtn) prevBtn.addEventListener('click', () => {
       prevSlide();
-      resetAutoPlay();
     });
     
     // Event listeners for dots
     indicators.forEach((ind, i) => {
       ind.addEventListener('click', () => {
         moveToSlide(i);
-        resetAutoPlay();
       });
     });
     
     // Auto play setup
     function startAutoPlay() {
+      // Don't set normal interval if currently showing a video
+      const currentSlide = slides[currentIdx];
+      if (currentSlide && currentSlide.querySelector('video')) {
+        return;
+      }
       if (!autoPlayTimer) {
         autoPlayTimer = setInterval(nextSlide, 5000);
       }
@@ -175,8 +209,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Pause auto play when mouse is hovering the phone mockup
     const container = document.querySelector('.phone-container');
     if (container) {
-      container.addEventListener('mouseenter', stopAutoPlay);
-      container.addEventListener('mouseleave', startAutoPlay);
+      container.addEventListener('mouseenter', () => {
+        // Only pause if it's not a video slide
+        const currentSlide = slides[currentIdx];
+        if (currentSlide && !currentSlide.querySelector('video')) {
+          stopAutoPlay();
+        }
+      });
+      container.addEventListener('mouseleave', () => {
+        // Only resume if it's not a video slide
+        const currentSlide = slides[currentIdx];
+        if (currentSlide && !currentSlide.querySelector('video')) {
+          startAutoPlay();
+        }
+      });
     }
   }
 });
