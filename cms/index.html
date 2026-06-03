@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Lira CMS — Portal de Edición</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <!-- Google GIS SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+  <!-- Login Screen Overlay -->
+  <div id="login-overlay" class="login-overlay">
+    <div class="login-card">
+      <div class="login-logo">
+        <img src="../assets/logo.svg" alt="La Lira" class="logo-img">
+        <h2>La Lira CMS</h2>
+        <p>Inicia sesión para editar himnos y cifrados</p>
+      </div>
+      
+      <!-- OAuth Login Buttons -->
+      <div class="oauth-buttons-container">
+        <div id="google-signin-btn-container" style="display: flex; justify-content: center; margin-bottom: 12px; width: 100%;">
+          <button id="google-custom-btn" class="btn btn-oauth btn-google w-full">
+            <svg viewBox="0 0 24 24" class="btn-oauth-icon"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.64l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            Continuar con Google
+          </button>
+        </div>
+      </div>
+
+      <div class="bypass-toggle-container">
+        <a href="#" id="toggle-local-login" class="local-login-link">Iniciar con credenciales locales</a>
+      </div>
+
+      <form id="login-form" class="hidden" style="margin-top: 15px; border-top: 1px solid var(--color-border); padding-top: 15px;">
+        <div class="form-group">
+          <label for="login-email">Correo Electrónico</label>
+          <input type="text" id="login-email" placeholder="admin@lalira.com">
+        </div>
+        <div class="form-group" style="margin-top: 12px;">
+          <label for="login-password">Contraseña</label>
+          <input type="password" id="login-password" placeholder="••••••••">
+        </div>
+        <div id="login-error" class="login-error-msg hidden">Credenciales inválidas</div>
+        <button type="submit" class="btn btn-primary w-full" style="margin-top: 20px;">
+          Entrar (Local)
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Top Glassmorphic Navigation -->
+  <header class="cms-header hidden" id="app-header">
+    <div class="header-logo">
+      <img src="../assets/logo.svg" alt="La Lira" class="logo-img">
+      <div class="logo-text">
+        <h1>La Lira CMS</h1>
+        <span id="user-display-name">Cargando usuario...</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="view-users-btn" class="btn btn-secondary admin-only">
+        Gestionar Usuarios
+      </button>
+      <button id="view-audit-btn" class="btn btn-secondary admin-only">
+        Ver Auditoría
+      </button>
+      <div class="db-status-badge">
+        <span class="status-dot"></span>
+        <span id="version-label">Cargando versión...</span>
+      </div>
+      <button id="publish-btn" class="btn btn-primary btn-publish admin-only">
+        <svg viewBox="0 0 24 24" class="btn-icon"><path fill="currentColor" d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+        Publicar DB
+      </button>
+      <button id="logout-btn" class="btn btn-secondary btn-logout" title="Cerrar Sesión">
+        Salir
+      </button>
+    </div>
+  </header>
+
+  <div class="cms-container hidden" id="app-container">
+    <!-- Left Sidebar: Song List & Filters -->
+    <aside class="cms-sidebar">
+      <div class="filter-box">
+        <div class="search-wrapper">
+          <svg viewBox="0 0 24 24" class="search-icon"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" id="search-input" placeholder="Buscar por número, título, letra...">
+        </div>
+        
+        <div class="filters-row">
+          <div class="select-wrapper">
+            <label for="hymnary-select">Himnario</label>
+            <select id="hymnary-select">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          
+          <div class="select-wrapper">
+            <label for="section-select">Sección</label>
+            <select id="section-select">
+              <option value="">Todas</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="song-list-container">
+        <div class="list-header">
+          <span class="count-label"><span id="songs-count">0</span> Alabanzas</span>
+        </div>
+        <div id="songs-list" class="songs-list">
+          <div class="loading-spinner"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Workspace: Editor Pane -->
+    <main class="cms-workspace">
+      <!-- Empty State -->
+      <div id="empty-state" class="empty-state">
+        <div class="empty-state-card">
+          <div class="empty-icon-wrapper">
+            <svg viewBox="0 0 24 24" class="empty-icon"><path fill="currentColor" d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+          </div>
+          <h2>Portal de Edición La Lira</h2>
+          <p>Selecciona un himno de la izquierda para comenzar. Modifica letras, traduce idiomas y gestiona aprobaciones.</p>
+        </div>
+      </div>
+
+      <!-- Editor Panel -->
+      <div id="editor-panel" class="editor-panel hidden">
+        <div class="editor-header">
+          <div class="song-title-group">
+            <span class="song-hymnary-tag" id="hymnary-badge">P</span>
+            <div class="song-title-inputs">
+              <h2 id="song-display-title">Cargando...</h2>
+              <div class="meta-row-header">
+                <span id="song-display-meta">Número 0</span>
+                <span id="draft-status-badge" class="draft-badge hidden">Borrador</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Actions & Approval Panel -->
+          <div class="editor-header-actions" id="action-buttons-container">
+            <button id="save-draft-btn" class="btn btn-secondary">
+              Guardar Borrador
+            </button>
+            <button id="submit-approval-btn" class="btn btn-primary">
+              Enviar a Aprobación
+            </button>
+            
+            <!-- Admin approval operations -->
+            <div id="admin-approval-actions" class="admin-approval-group admin-only hidden">
+              <button id="approve-btn" class="btn btn-success">
+                Aprobar Borrador
+              </button>
+              <button id="reject-btn" class="btn btn-danger">
+                Rechazar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Editor Tabs -->
+        <div class="editor-tabs">
+          <button class="tab-link active" data-tab="tab-metadata">Metadatos</button>
+          <button class="tab-link" data-tab="tab-chordpro">Letras y Acordes (ChordPro)</button>
+          <button class="tab-link" data-tab="tab-stanzas">Estrofas Planas (Búsqueda)</button>
+          <button class="tab-link" data-tab="tab-notes">Referencias y Notas</button>
+          <button class="tab-link admin-only hidden" id="tab-diff-link" data-tab="tab-diff">Revisión de Cambios (Diff)</button>
+        </div>
+
+        <div class="editor-content-container">
+          
+          <!-- Tab 1: Metadata -->
+          <div id="tab-metadata" class="tab-content active">
+            <div class="grid-form">
+              <div class="form-section">
+                <h3>Información Musical</h3>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="input-number">Número en Himnario</label>
+                    <input type="text" id="input-number">
+                  </div>
+                  <div class="form-group">
+                    <label for="input-key">Tonalidad Inicial</label>
+                    <input type="text" id="input-key" placeholder="Ej: Em, F">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="input-section">Sección del Himnario</label>
+                  <select id="input-section"></select>
+                </div>
+                <div class="form-group">
+                  <label for="input-intro">Introducción (Guía)</label>
+                  <input type="text" id="input-intro" placeholder="Ej: Introducción: [F] [C/E]">
+                </div>
+              </div>
+
+              <div class="form-section">
+                <h3>Detalles de Traducción Comparativa</h3>
+                <div class="lang-tabs-container triple">
+                  
+                  <!-- Spanish Details -->
+                  <div class="lang-col">
+                    <h4 class="es-title-header">Español (es)</h4>
+                    <div class="form-group">
+                      <label for="meta-es-titulo">Título</label>
+                      <input type="text" id="meta-es-titulo">
+                    </div>
+                    <div class="form-group">
+                      <label for="meta-es-autor">Autor Letra</label>
+                      <input type="text" id="meta-es-autor">
+                    </div>
+                    <div class="form-group">
+                      <label for="meta-es-compositor">Compositor</label>
+                      <input type="text" id="meta-es-compositor">
+                    </div>
+                    <div class="form-group">
+                      <label for="meta-es-adaptador">Adaptador</label>
+                      <input type="text" id="meta-es-adaptador">
+                    </div>
+                    <div class="form-group">
+                      <label for="meta-es-traductor">Traductor</label>
+                      <input type="text" id="meta-es-traductor">
+                    </div>
+                  </div>
+
+                  <!-- Portuguese Details -->
+                  <div class="lang-col">
+                    <h4 class="pt-title-header">Portugués (pt)</h4>
+                    <div class="form-group">
+                      <label for="meta-pt-titulo">Título</label>
+                      <input type="text" id="meta-pt-titulo">
+                    </div>
+                    <div class="form-group">
+                      <label for="meta-pt-autor">Autor Letra</label>
+                      <input type="text" id="meta-pt-autor">
+                    </div>
+                    <div class="form-group">
+                      <label for="meta-pt-compositor">Compositor</label>
+                      <input type="text" id="meta-pt-compositor">
+                    </div>
+                    <div class="form-group">
+                      <label for="meta-pt-adaptador">Adaptador</label>
+                      <input type="text" id="meta-pt-adaptador">
+                    </div>
+                    <div class="form-group">
+                      <label for="meta-pt-traductor">Traductor</label>
+                      <input type="text" id="meta-pt-traductor">
+                    </div>
+                  </div>
+
+                  <!-- English Details -->
+                  <div class="lang-col">
+                    <h4 class="en-title-header">Inglés (en)</h4>
+                    <div class="form-group">
+                      <label for="meta-en-titulo">Título</label>
+                      <input type="text" id="meta-en-titulo">
+                    </div>
+                    <div class="form-group">
+                      <label for="meta-en-autor">Autor Letra</label>
+                      <input type="text" id="meta-en-autor">
+                    </div>
+                    <div class="form-group">
+                      <label for="meta-en-compositor">Compositor</label>
+                      <input type="text" id="meta-en-compositor">
+                    </div>
+                    <div class="form-group">
+                      <label for="meta-en-adaptador">Adaptador</label>
+                      <input type="text" id="meta-en-adaptador">
+                    </div>
+                    <div class="form-group">
+                      <label for="meta-en-traductor">Traductor</label>
+                      <input type="text" id="meta-en-traductor">
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2: ChordPro Editor -->
+          <div id="tab-chordpro" class="tab-content">
+            <div class="chordpro-editor-layout">
+              <div class="editor-pane-chords">
+                <div class="pane-header">
+                  <h3>ChordPro Editor</h3>
+                  <div class="lang-selector-mini">
+                    <button class="mini-lang-btn active" id="cifra-lang-es">ES</button>
+                    <button class="mini-lang-btn" id="cifra-lang-pt">PT</button>
+                    <button class="mini-lang-btn" id="cifra-lang-en">EN</button>
+                  </div>
+                </div>
+                <div class="form-row" style="margin-bottom: 12px;">
+                  <div class="form-group half">
+                    <label for="cifra-key">Tono Cifra</label>
+                    <input type="text" id="cifra-key" placeholder="Ej: F">
+                  </div>
+                  <div class="form-group half">
+                    <label for="cifra-bpm">BPM</label>
+                    <input type="number" id="cifra-bpm" placeholder="Ej: 75">
+                  </div>
+                  <div class="form-group half">
+                    <label for="cifra-capo">Capotraste</label>
+                    <input type="number" id="cifra-capo" value="0">
+                  </div>
+                </div>
+                <textarea id="chordpro-textarea" placeholder="Escribe el texto ChordPro aquí...&#10;Ejemplo:&#10;[F]En esta [C]hora de clamor"></textarea>
+                <div class="editor-actions-footer">
+                  <span style="font-size:0.75rem; color:var(--color-text-muted); margin-right:auto; align-self:center;">
+                    Las estrofas se extraerán automáticamente de los acordes al guardar/aprobar.
+                  </span>
+                </div>
+              </div>
+
+              <div class="preview-pane-chords">
+                <div class="pane-header">
+                  <h3>Previsualización de App (Modo Cifrado)</h3>
+                </div>
+                <div id="chords-preview" class="chords-preview-output"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 3: Stanzas (Plain Text Search Data) -->
+          <div id="tab-stanzas" class="tab-content">
+            <div class="stanzas-editor-layout triple">
+              <div class="stanzas-list-editor" id="stanzas-es-list">
+                <div class="pane-header">
+                  <h3>Estrofas en Español</h3>
+                  <button class="btn btn-secondary btn-sm" onclick="addStanzaRow('es')">+ Añadir Estrofa</button>
+                </div>
+                <div class="stanzas-rows-container" id="container-stanzas-es"></div>
+              </div>
+              <div class="stanzas-list-editor" id="stanzas-pt-list">
+                <div class="pane-header">
+                  <h3>Estrofas en Portugués</h3>
+                  <button class="btn btn-secondary btn-sm" onclick="addStanzaRow('pt')">+ Añadir Estrofa</button>
+                </div>
+                <div class="stanzas-rows-container" id="container-stanzas-pt"></div>
+              </div>
+              <div class="stanzas-list-editor" id="stanzas-en-list">
+                <div class="pane-header">
+                  <h3>Estrofas en Inglés</h3>
+                  <button class="btn btn-secondary btn-sm" onclick="addStanzaRow('en')">+ Añadir Estrofa</button>
+                </div>
+                <div class="stanzas-rows-container" id="container-stanzas-en"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 4: Annotations & Footnotes -->
+          <div id="tab-notes" class="tab-content">
+            <div class="notes-manager-layout">
+              <div class="notes-form-container">
+                <div class="pane-header">
+                  <h3>Añadir / Editar Nota</h3>
+                </div>
+                <div class="form-group">
+                  <label for="note-input-type">Tipo de Nota</label>
+                  <select id="note-input-type">
+                    <option value="biblica">Bíblica [B] (Dorado)</option>
+                    <option value="traductor">Traductor [T] (Azul)</option>
+                    <option value="autor">Autor [A] (Verde)</option>
+                    <option value="historico">Contexto Histórico [H] (Morado)</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <div class="form-group half">
+                    <label for="note-input-index">Número Marcador</label>
+                    <input type="number" id="note-input-index" value="1" min="1">
+                  </div>
+                  <div class="form-group half">
+                    <label for="note-input-fragment">Fragmento de Letra</label>
+                    <input type="text" id="note-input-fragment" placeholder="Ej: Cual ciervo jadeante">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="note-input-text">Contenido Explicativo (Texto de la Nota)</label>
+                  <textarea id="note-input-text" placeholder="Escribe el comentario explicativo..."></textarea>
+                </div>
+                
+                <!-- Fields for Biblical notes only -->
+                <div class="biblical-only-fields" id="biblical-fields">
+                  <div class="form-group">
+                    <label for="note-input-ref">Cita Bíblica (Libro Capítulo:Versículo)</label>
+                    <input type="text" id="note-input-ref" placeholder="Ej: Salmos 42:1">
+                  </div>
+                  <div class="form-group">
+                    <label for="note-input-verse">Texto del Versículo</label>
+                    <textarea id="note-input-verse" placeholder="Ej: Como el ciervo brama..."></textarea>
+                  </div>
+                </div>
+
+                <!-- Fields for Author/Translator notes only -->
+                <div class="author-only-fields hidden" id="author-fields">
+                  <div class="form-group">
+                    <label for="note-input-author">Autor de la Nota / Comentario</label>
+                    <input type="text" id="note-input-author" placeholder="Ej: J.G.">
+                  </div>
+                </div>
+
+                <div class="form-actions" style="margin-top: 15px;">
+                  <button id="add-note-list-btn" class="btn btn-primary w-full">Añadir / Actualizar Nota en Lista</button>
+                </div>
+              </div>
+
+              <div class="notes-list-preview">
+                <div class="pane-header">
+                  <h3>Lista de Notas para esta Canción</h3>
+                </div>
+                <div class="notes-list-items" id="notes-list-items">
+                  <div class="empty-substate">No hay notas configuradas para esta canción.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 5: Draft Comparison (Admin Only) -->
+          <div id="tab-diff" class="tab-content">
+            <div class="diff-container-layout">
+              <div class="diff-pane">
+                <div class="pane-header">
+                  <h3 style="color: var(--color-text-muted);">Versión Actual (Producción)</h3>
+                </div>
+                <div id="diff-production-view" class="diff-content-view"></div>
+              </div>
+              <div class="diff-pane">
+                <div class="pane-header">
+                  <h3 style="color: var(--color-primary);">Propuesta de Cambio (Borrador)</h3>
+                </div>
+                <div id="diff-draft-view" class="diff-content-view"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Modal for publishing feedback -->
+  <div id="publish-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Publicación de Base de Datos</h2>
+      </div>
+      <div class="modal-body">
+        <div class="publishing-spinner-container">
+          <div class="publishing-spinner"></div>
+          <p id="publish-status-text">Bumping version, compiling SQLite catalog and uploading database...</p>
+        </div>
+        <pre id="publish-log" class="publish-log-box hidden"></pre>
+      </div>
+      <div class="modal-footer">
+        <button id="close-publish-modal" class="btn btn-secondary hidden">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Audit Logs -->
+  <div id="audit-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 800px; height: 80%;">
+      <div class="modal-header">
+        <h2>Bitácora de Auditoría (CMS)</h2>
+      </div>
+      <div class="modal-body" style="overflow-y: auto; flex: 1;">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Usuario</th>
+              <th>Acción</th>
+              <th>Hymn ID</th>
+              <th>Detalles</th>
+            </tr>
+          </thead>
+          <tbody id="audit-logs-rows">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button id="close-audit-modal" class="btn btn-secondary">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for User Management -->
+  <div id="users-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 900px; height: 80%;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Gestión de Colaboradores (CMS)</h2>
+        <button id="invite-user-btn" class="btn btn-primary btn-sm">+ Invitar Colaborador</button>
+      </div>
+      <div class="modal-body" style="overflow-y: auto; flex: 1;">
+        <div class="user-table-container">
+          <table class="user-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Correo Electrónico</th>
+                <th>Rol</th>
+                <th>Proveedor</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="users-list-rows">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="close-users-modal" class="btn btn-secondary">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Creating/Editing User -->
+  <div id="user-form-modal" class="modal-overlay hidden" style="z-index: 3000;">
+    <div class="modal-card" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2 id="user-modal-title">Invitar Colaborador</h2>
+      </div>
+      <form id="user-edit-form">
+        <input type="hidden" id="user-form-id">
+        <div class="form-group">
+          <label for="user-form-name">Nombre Completo</label>
+          <input type="text" id="user-form-name" required placeholder="Ej: Juan Pérez">
+        </div>
+        <div class="form-group" style="margin-top: 12px;">
+          <label for="user-form-email">Correo Electrónico</label>
+          <input type="email" id="user-form-email" required placeholder="ejemplo@gmail.com">
+        </div>
+        <div class="form-group" style="margin-top: 12px;">
+          <label for="user-form-provider">Método de Autenticación</label>
+          <select id="user-form-provider" required>
+            <option value="google">Google Authentication</option>
+            <option value="local">Local (Correo y Contraseña)</option>
+          </select>
+        </div>
+        <div class="form-group hidden" style="margin-top: 12px;" id="user-form-password-group">
+          <label for="user-form-password">Contraseña (Mín. 6 caracteres)</label>
+          <input type="password" id="user-form-password" placeholder="Establecer o cambiar contraseña">
+        </div>
+        <div class="form-group" style="margin-top: 12px;">
+          <label for="user-form-role">Rol en el CMS</label>
+          <select id="user-form-role" required>
+            <option value="editor">Editor (Crea borradores)</option>
+            <option value="admin">Administrador (Control total)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-top: 12px;" id="user-form-status-group">
+          <label for="user-form-status">Estado de la cuenta</label>
+          <select id="user-form-status">
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo (Suspendido)</option>
+          </select>
+        </div>
+        <div id="user-form-error" class="login-error-msg hidden" style="margin-top: 10px;">Error al guardar</div>
+        <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" id="cancel-user-form" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
