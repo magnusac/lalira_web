@@ -41,10 +41,26 @@ for (const key in envConfig) {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'lalira_cms_secret_token_key_2026';
-const DB_PATH = process.env.DB_PATH || '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo.sqlite';
-const CMS_DB_PATH = process.env.CMS_DB_PATH || '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/cms_internal.sqlite';
-const VERSION_PATH = process.env.VERSION_PATH || '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/server/catalogo/version.json';
-const ASSETS_DB_PATH = process.env.ASSETS_DB_PATH || '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/assets/catalogo.sqlite';
+
+// Detect if running on production host (under /home3/magnusal/lalira/) or local machine fallback
+const isProductionHost = __dirname.startsWith('/home3/magnusal/lalira');
+
+const DB_PATH = process.env.DB_PATH || (isProductionHost 
+  ? '/home3/magnusal/lalira/catalogo/catalogo.sqlite' 
+  : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo.sqlite');
+
+const CMS_DB_PATH = process.env.CMS_DB_PATH || (isProductionHost 
+  ? '/home3/magnusal/lalira/cms_internal.sqlite' 
+  : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/cms_internal.sqlite');
+
+const VERSION_PATH = process.env.VERSION_PATH || (isProductionHost 
+  ? '/home3/magnusal/lalira/catalogo/version.json' 
+  : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/server/catalogo/version.json');
+
+const ASSETS_DB_PATH = process.env.ASSETS_DB_PATH || (isProductionHost 
+  ? '/home3/magnusal/lalira/assets/catalogo.sqlite' 
+  : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/assets/catalogo.sqlite');
+
 
 const app = express();
 app.use(express.json());
