@@ -13,12 +13,38 @@ import jwksClient from 'jwks-rsa';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const JWT_SECRET = 'lalira_cms_secret_token_key_2026';
-const DB_PATH = '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo.sqlite';
-const CMS_DB_PATH = '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/cms_internal.sqlite';
-const VERSION_PATH = '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/server/catalogo/version.json';
-const ASSETS_DB_PATH = '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/assets/catalogo.sqlite';
-const ENV_PATH = '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/exports/.env';
+const LOCAL_ENV_PATH = path.join(__dirname, '.env');
+const SIBLING_ENV_PATH = '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/exports/.env';
+const ENV_PATH = fs.existsSync(LOCAL_ENV_PATH) ? LOCAL_ENV_PATH : SIBLING_ENV_PATH;
+
+// Helper to load env
+function loadEnv() {
+  const env = {};
+  if (fs.existsSync(ENV_PATH)) {
+    const lines = fs.readFileSync(ENV_PATH, 'utf8').split('\n');
+    lines.forEach(line => {
+      line = line.trim();
+      if (!line || line.startsWith('#') || !line.includes('=')) return;
+      const [key, ...parts] = line.split('=');
+      env[key.trim()] = parts.join('=').trim();
+    });
+  }
+  return env;
+}
+
+// Load env vars into process.env at startup
+const envConfig = loadEnv();
+for (const key in envConfig) {
+  if (process.env[key] === undefined) {
+    process.env[key] = envConfig[key];
+  }
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || 'lalira_cms_secret_token_key_2026';
+const DB_PATH = process.env.DB_PATH || '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo.sqlite';
+const CMS_DB_PATH = process.env.CMS_DB_PATH || '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/cms_internal.sqlite';
+const VERSION_PATH = process.env.VERSION_PATH || '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/server/catalogo/version.json';
+const ASSETS_DB_PATH = process.env.ASSETS_DB_PATH || '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/assets/catalogo.sqlite';
 
 const app = express();
 app.use(express.json());
@@ -791,20 +817,6 @@ app.get('/api/version', authenticateToken, (req, res) => {
   }
 });
 
-// Helper to load env for SCP publishing
-function loadEnv() {
-  const env = {};
-  if (fs.existsSync(ENV_PATH)) {
-    const lines = fs.readFileSync(ENV_PATH, 'utf8').split('\n');
-    lines.forEach(line => {
-      line = line.trim();
-      if (!line || line.startsWith('#') || !line.includes('=')) return;
-      const [key, ...parts] = line.split('=');
-      env[key.trim()] = parts.join('=').trim();
-    });
-  }
-  return env;
-}
 
 app.post('/api/publish', authenticateToken, requireAdmin, (req, res) => {
   try {
