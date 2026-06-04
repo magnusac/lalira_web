@@ -2,7 +2,7 @@
 const translations = {
   es: {
     // Nav & Meta
-    meta_title: "La Lira App - Himnario & Acordes",
+    meta_title: "La Lira App - La Alabanza en tus manos",
     meta_desc: "La Lira es una aplicación móvil premium para letras y acordes de himnarios y música de adoración. Transpón tonos, crea listas y accede sin conexión.",
     nav_features: "Características",
     nav_faq: "FAQ",
@@ -132,7 +132,7 @@ const translations = {
   },
   pt: {
     // Nav & Meta
-    meta_title: "La Lira App - Hinário & Acordes",
+    meta_title: "La Lira App - O Louvor em suas mãos",
     meta_desc: "La Lira é um aplicativo móvel premium para letras e cifras de hinários e música de adoração. Transponha tons, crie playlists e acesse offline.",
     nav_features: "Recursos",
     nav_faq: "FAQ",
