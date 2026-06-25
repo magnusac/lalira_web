@@ -18,6 +18,8 @@ export default defineConfig({
         privacy: resolve(__dirname, 'privacy.html'),
         terms: resolve(__dirname, 'terms.html'),
         cms: resolve(__dirname, 'cms/index.html'),
+        himnario: resolve(__dirname, 'himnario/index.html'),
+        projector: resolve(__dirname, 'himnario/projector.html'),
       },
     },
   },

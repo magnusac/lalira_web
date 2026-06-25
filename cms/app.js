@@ -12,6 +12,8 @@ let state = {
 };
 
 let oauthConfig = { googleClientId: null, devBypass: false };
+const API_BASE = window.location.pathname.includes('/lalira/') ? '/lalira/api' : '/api';
+
 
 // DOM Elements
 const loginOverlay = document.getElementById('login-overlay');
@@ -57,6 +59,8 @@ const viewAuditBtn = document.getElementById('view-audit-btn');
 
 const emptyState = document.getElementById('empty-state');
 const editorPanel = document.getElementById('editor-panel');
+const dashboardPanel = document.getElementById('dashboard-panel');
+const sidebarDashboardBtn = document.getElementById('sidebar-dashboard-btn');
 const saveDraftBtn = document.getElementById('save-draft-btn');
 const submitApprovalBtn = document.getElementById('submit-approval-btn');
 const adminApprovalActions = document.getElementById('admin-approval-actions');
@@ -82,7 +86,6 @@ const closeAuditModal = document.getElementById('close-audit-modal');
 // Page Load Setup
 document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
-  initOAuth();
   if (state.token) {
     const ok = await fetchUserProfile();
     if (ok) {
@@ -100,17 +103,11 @@ function setupEventListeners() {
   // Login Submit
   loginForm.addEventListener('submit', handleLoginSubmit);
   
-  // Local bypass login form toggle
-  const toggleLocalLoginLink = document.getElementById('toggle-local-login');
-  toggleLocalLoginLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    loginForm.classList.toggle('hidden');
-    if (loginForm.classList.contains('hidden')) {
-      toggleLocalLoginLink.textContent = 'Iniciar con credenciales locales';
-    } else {
-      toggleLocalLoginLink.textContent = 'Ocultar credenciales locales';
-    }
-  });
+  // Dashboard Navigation
+  if (sidebarDashboardBtn) {
+    sidebarDashboardBtn.addEventListener('click', showDashboard);
+  }
+
 
   // Logout Trigger
   logoutBtn.addEventListener('click', handleLogout);
@@ -163,12 +160,41 @@ function setupEventListeners() {
   document.getElementById('cifra-lang-pt').addEventListener('click', () => switchCifraLang('pt'));
   document.getElementById('cifra-lang-en').addEventListener('click', () => switchCifraLang('en'));
 
+  // Helper to auto-extract directives from ChordPro
+  const extractDirectives = (text) => {
+    const timeMatch = text.match(/\{time:\s*([^}]+)\}/i);
+    const tempoMatch = text.match(/\{tempo:\s*([^}]+)\}/i);
+    const keyMatch = text.match(/\{key:\s*([^}]+)\}/i);
+    return {
+      time: timeMatch ? timeMatch[1].trim() : null,
+      tempo: tempoMatch ? parseInt(tempoMatch[1].trim()) || null : null,
+      key: keyMatch ? keyMatch[1].trim() : null
+    };
+  };
+
   // ChordPro Textarea live preview
   document.getElementById('chordpro-textarea').addEventListener('input', () => {
     const targetObj = state.activeDraft ? state.activeDraft.data : state.currentSong;
     if (targetObj) {
       const lang = state.currentCifraLang;
-      targetObj.cifras[lang].contenido = document.getElementById('chordpro-textarea').value;
+      const text = document.getElementById('chordpro-textarea').value;
+      targetObj.cifras[lang].contenido = text;
+
+      // Auto-extract directives
+      const extracted = extractDirectives(text);
+      if (extracted.time) {
+        targetObj.cifras[lang].tiempo = extracted.time;
+        document.getElementById('cifra-tiempo').value = extracted.time;
+      }
+      if (extracted.tempo) {
+        targetObj.cifras[lang].bpm = extracted.tempo;
+        document.getElementById('cifra-bpm').value = extracted.tempo;
+      }
+      if (extracted.key) {
+        targetObj.cifras[lang].tonalidad = extracted.key;
+        document.getElementById('cifra-key').value = extracted.key;
+      }
+
       renderChordProPreview();
     }
   });
@@ -182,9 +208,13 @@ function setupEventListeners() {
     const targetObj = state.activeDraft ? state.activeDraft.data : state.currentSong;
     if (targetObj) targetObj.cifras[state.currentCifraLang].bpm = parseInt(e.target.value) || 0;
   });
-  document.getElementById('cifra-capo').addEventListener('input', (e) => {
+  document.getElementById('cifra-tiempo').addEventListener('input', (e) => {
     const targetObj = state.activeDraft ? state.activeDraft.data : state.currentSong;
-    if (targetObj) targetObj.cifras[state.currentCifraLang].capotraste = parseInt(e.target.value) || 0;
+    if (targetObj) targetObj.cifras[state.currentCifraLang].tiempo = e.target.value;
+  });
+  document.getElementById('cifra-ritmo').addEventListener('input', (e) => {
+    const targetObj = state.activeDraft ? state.activeDraft.data : state.currentSong;
+    if (targetObj) targetObj.cifras[state.currentCifraLang].ritmo = e.target.value;
   });
 
   // Save Draft, Submit, Approve, Reject buttons
@@ -232,7 +262,7 @@ function hideLoginScreen() {
 
 async function fetchUserProfile() {
   try {
-    const res = await fetch('/api/auth/me', {
+    const res = await fetch(`${API_BASE}/auth/me`, {
       headers: { 'Authorization': `Bearer ${state.token}` }
     });
     if (!res.ok) throw new Error();
@@ -254,7 +284,7 @@ async function handleLoginSubmit(e) {
   loginError.classList.add('hidden');
 
   try {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: loginEmail.value, password: loginPassword.value })
@@ -281,6 +311,7 @@ function handleLogout() {
   state.token = null;
   state.user = null;
   localStorage.removeItem('lalira_token');
+  if (dashboardPanel) dashboardPanel.classList.add('hidden');
   showLoginScreen();
 }
 
@@ -295,6 +326,7 @@ async function initializeDashboard() {
   hideLoginScreen();
   await loadMetadata();
   await fetchSongs();
+  showDashboard();
 }
 
 // Show Toast message
@@ -313,8 +345,8 @@ function showToast(message, isError = false) {
 async function loadMetadata() {
   try {
     const [hymnalsRes, sectionsRes] = await Promise.all([
-      fetch('/api/hymnals', { headers: { 'Authorization': `Bearer ${state.token}` } }),
-      fetch('/api/sections', { headers: { 'Authorization': `Bearer ${state.token}` } })
+      fetch(`${API_BASE}/hymnals`, { headers: { 'Authorization': `Bearer ${state.token}` } }),
+      fetch(`${API_BASE}/sections`, { headers: { 'Authorization': `Bearer ${state.token}` } })
     ]);
 
     state.hymnals = await hymnalsRes.json();
@@ -337,7 +369,7 @@ async function loadMetadata() {
 
 async function loadVersionInfo() {
   try {
-    const res = await fetch('/api/version', { headers: { 'Authorization': `Bearer ${state.token}` } });
+    const res = await fetch(`${API_BASE}/version`, { headers: { 'Authorization': `Bearer ${state.token}` } });
     const vdata = await res.json();
     const sizeMB = (vdata.db_size / (1024 * 1024)).toFixed(2);
     versionLabel.textContent = `v${vdata.version || '0.0.0'} (${sizeMB} MB)`;
@@ -356,7 +388,7 @@ async function fetchSongs() {
     if (sectionSelect.value) params.append('seccion_id', sectionSelect.value);
     if (searchInput.value.trim()) params.append('search', searchInput.value.trim());
 
-    const res = await fetch(`/api/songs?${params.toString()}`, {
+    const res = await fetch(`${API_BASE}/songs?${params.toString()}`, {
       headers: { 'Authorization': `Bearer ${state.token}` }
     });
     state.songs = await res.json();
@@ -407,7 +439,7 @@ window.loadSong = async function(songId) {
     const items = document.querySelectorAll('.song-item');
     items.forEach(item => item.classList.remove('active'));
 
-    const res = await fetch(`/api/songs/${songId}`, {
+    const res = await fetch(`${API_BASE}/songs/${songId}`, {
       headers: { 'Authorization': `Bearer ${state.token}` }
     });
     if (!res.ok) throw new Error();
@@ -421,6 +453,8 @@ window.loadSong = async function(songId) {
     // Sync active highlight
     fetchSongsListSync();
 
+    if (sidebarDashboardBtn) sidebarDashboardBtn.classList.remove('active');
+    if (dashboardPanel) dashboardPanel.classList.add('hidden');
     emptyState.classList.add('hidden');
     editorPanel.classList.remove('hidden');
 
@@ -478,7 +512,7 @@ window.loadSong = async function(songId) {
     renderStanzasLists();
     renderNotesList();
 
-    // Default to Metadata Tab
+    // Default to ChordPro Tab
     tabLinks[0].click();
   } catch (err) {
     showToast("Error al cargar la alabanza.", true);
@@ -488,7 +522,8 @@ window.loadSong = async function(songId) {
 function fetchSongsListSync() {
   const items = Array.from(songsList.children);
   items.forEach(item => {
-    if (item.outerHTML.includes(`loadSong(${state.currentSong.id})`)) {
+    item.classList.remove('active');
+    if (state.currentSong && item.outerHTML.includes(`loadSong(${state.currentSong.id})`)) {
       item.classList.add('active');
     }
   });
@@ -502,12 +537,13 @@ function switchCifraLang(lang) {
   document.getElementById('cifra-lang-en').classList.toggle('active', lang === 'en');
 
   const workingData = state.activeDraft ? state.activeDraft.data : state.currentSong;
-  const cifra = workingData.cifras[lang] || { contenido: '', tonalidad: '', capotraste: 0, bpm: 0 };
+  const cifra = workingData.cifras[lang] || { contenido: '', tonalidad: '', tiempo: '', bpm: 0, ritmo: '' };
   
   document.getElementById('chordpro-textarea').value = cifra.contenido || "";
   document.getElementById('cifra-key').value = cifra.tonalidad || "";
   document.getElementById('cifra-bpm').value = cifra.bpm || "";
-  document.getElementById('cifra-capo').value = cifra.capotraste || 0;
+  document.getElementById('cifra-tiempo').value = cifra.tiempo || "";
+  document.getElementById('cifra-ritmo').value = cifra.ritmo || "";
 
   renderChordProPreview();
 }
@@ -659,12 +695,7 @@ function addStanzaToContainer(container, stanza, lang) {
   div.innerHTML = `
     <div class="stanza-item-header">
       <span class="stanza-index-label">Orden: <input type="number" class="stanza-order-input" value="${stanza.orden}" style="width: 50px; padding: 2px 4px; display: inline;"></span>
-      <select class="stanza-type-select">
-        <option value="estrofa" ${stanza.tipo === 'estrofa' ? 'selected' : ''}>Estrofa</option>
-        <option value="coro" ${stanza.tipo === 'coro' ? 'selected' : ''}>Coro</option>
-        <option value="final" ${stanza.tipo === 'final' ? 'selected' : ''}>Final</option>
-        <option value="instrumentos" ${stanza.tipo === 'instrumentos' ? 'selected' : ''}>Instrumental</option>
-      </select>
+      <input type="hidden" class="stanza-type-select" value="estrofa">
       <button class="stanza-delete-btn" onclick="this.closest('.stanza-edit-item').remove()">Eliminar</button>
     </div>
     <textarea class="stanza-textarea" placeholder="Texto de la estrofa...">${stanza.texto || ''}</textarea>
@@ -835,10 +866,11 @@ async function saveDraftSong(submitForApproval = false) {
           contenido: document.getElementById('chordpro-textarea').value,
           tonalidad: document.getElementById('cifra-key').value.trim(),
           bpm: parseInt(document.getElementById('cifra-bpm').value) || 0,
-          capotraste: parseInt(document.getElementById('cifra-capo').value) || 0
+          tiempo: document.getElementById('cifra-tiempo').value.trim(),
+          ritmo: document.getElementById('cifra-ritmo').value.trim()
         };
       } else {
-        workingData.cifras[lang] = oldCifras[lang] || { idioma: lang, contenido: '', tonalidad: '', capotraste: 0, bpm: 0 };
+        workingData.cifras[lang] = oldCifras[lang] || { idioma: lang, contenido: '', tonalidad: '', tiempo: '', bpm: 0, ritmo: '' };
       }
     }
 
@@ -863,7 +895,7 @@ async function saveDraftSong(submitForApproval = false) {
     });
 
     // POST Save Draft
-    let res = await fetch(`/api/drafts/${state.currentSong.id}`, {
+    let res = await fetch(`${API_BASE}/drafts/${state.currentSong.id}`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -875,7 +907,7 @@ async function saveDraftSong(submitForApproval = false) {
 
     // POST Submit if flagged
     if (submitForApproval) {
-      res = await fetch(`/api/drafts/${state.currentSong.id}/submit`, {
+      res = await fetch(`${API_BASE}/drafts/${state.currentSong.id}/submit`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${state.token}` }
       });
@@ -900,7 +932,7 @@ async function approveDraftSong() {
   if (!state.currentSong || !confirm("¿Estás seguro de aprobar este borrador? Se aplicará directamente en la base de datos de producción.")) return;
 
   try {
-    const res = await fetch(`/api/drafts/${state.currentSong.id}/approve`, {
+    const res = await fetch(`${API_BASE}/drafts/${state.currentSong.id}/approve`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${state.token}` }
     });
@@ -923,7 +955,7 @@ async function rejectDraftSong() {
   if (motivo === null) return; // Cancelled
 
   try {
-    const res = await fetch(`/api/drafts/${state.currentSong.id}/reject`, {
+    const res = await fetch(`${API_BASE}/drafts/${state.currentSong.id}/reject`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -1002,7 +1034,7 @@ function renderDiffView() {
 
       const cifra = songObj.cifras[lang] || {};
       out += `=== Cifrado ChordPro (${lang.toUpperCase()}) ===\n`;
-      out += `BPM: ${cifra.bpm || 0} / Capo: ${cifra.capotraste || 0}\n`;
+      out += `BPM: ${cifra.bpm || 0} / Compás: ${cifra.tiempo || ''}\n`;
       out += `${cifra.contenido || '(Vacío)'}\n\n`;
     });
 
@@ -1033,7 +1065,7 @@ async function openAuditModalView() {
   auditLogsRows.innerHTML = '<tr><td colspan="5" style="text-align:center;">Cargando...</td></tr>';
 
   try {
-    const res = await fetch('/api/audit-logs', {
+    const res = await fetch(`${API_BASE}/audit-logs`, {
       headers: { 'Authorization': `Bearer ${state.token}` }
     });
     const logs = await res.json();
@@ -1071,7 +1103,7 @@ async function triggerPublishAll() {
   closePublishModal.classList.add('hidden');
 
   try {
-    const res = await fetch('/api/publish', {
+    const res = await fetch(`${API_BASE}/publish`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${state.token}` }
     });
@@ -1094,76 +1126,7 @@ async function triggerPublishAll() {
   }
 }
 
-// ── OAUTH IDENTITY INITIALIZATION & HANDLERS ─────────────────────────────────
 
-async function initOAuth() {
-  try {
-    const res = await fetch('/api/auth/config');
-    oauthConfig = await res.json();
-
-    // Init Google Identity Services
-    if (oauthConfig.googleClientId) {
-      if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-        google.accounts.id.initialize({
-          client_id: oauthConfig.googleClientId,
-          callback: handleGoogleLoginResponse
-        });
-        
-        google.accounts.id.renderButton(
-          document.getElementById('google-signin-btn-container'),
-          { theme: 'outline', size: 'large', width: 280 }
-        );
-      } else {
-        console.warn('[AUTH] Google SDK not loaded yet. Retrying in 1s...');
-        setTimeout(initOAuth, 1000);
-      }
-    } else {
-      console.log('[AUTH] Google Client ID not configured. Using custom button for bypass.');
-      const googleCustomBtn = document.getElementById('google-custom-btn');
-      googleCustomBtn.addEventListener('click', () => {
-        if (oauthConfig.devBypass) {
-          handleOAuthLogin('google', 'mock_google_dev');
-        } else {
-          showToast('Google OAuth no está configurado en este servidor', true);
-        }
-      });
-    }
-
-  } catch (err) {
-    console.error('[AUTH] Failed to initialize OAuth configuration', err);
-  }
-}
-
-function handleGoogleLoginResponse(response) {
-  if (response && response.credential) {
-    handleOAuthLogin('google', response.credential);
-  }
-}
-
-async function handleOAuthLogin(provider, token) {
-  loginError.classList.add('hidden');
-  try {
-    const res = await fetch('/api/auth/oauth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, token })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Authentication failed');
-
-    state.token = data.token;
-    state.user = data.user;
-    localStorage.setItem('lalira_token', data.token);
-
-    userDisplayName.textContent = `${state.user.nombre} (${state.user.rol === 'admin' ? 'Admin' : 'Editor'})`;
-    syncRoleVisibility();
-    hideLoginScreen();
-    await initializeDashboard();
-  } catch (err) {
-    loginError.textContent = err.message;
-    loginError.classList.remove('hidden');
-  }
-}
 
 // ── USER MANAGEMENT MODAL & CRUD ─────────────────────────────────────────────
 
@@ -1172,7 +1135,7 @@ async function openUsersModalView() {
   usersListRows.innerHTML = '<tr><td colspan="6" style="text-align:center;">Cargando colaboradores...</td></tr>';
 
   try {
-    const res = await fetch('/api/users', {
+    const res = await fetch(`${API_BASE}/users`, {
       headers: { 'Authorization': `Bearer ${state.token}` }
     });
     const users = await res.json();
@@ -1212,7 +1175,7 @@ window.deleteUser = async function(userId) {
   if (!confirm('¿Estás seguro de que deseas eliminar permanentemente a este colaborador?')) return;
 
   try {
-    const res = await fetch(`/api/users/${userId}`, {
+    const res = await fetch(`${API_BASE}/users/${userId}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${state.token}` }
     });
@@ -1234,9 +1197,9 @@ function openInviteUserForm() {
   userFormEmail.value = '';
   userFormEmail.disabled = false;
   userFormRole.value = 'editor';
-  userFormProvider.value = 'google';
+  userFormProvider.value = 'local';
   userFormPassword.value = '';
-  userFormPasswordGroup.classList.add('hidden');
+  userFormPasswordGroup.classList.remove('hidden');
   userFormStatusGroup.classList.add('hidden');
   userFormError.classList.add('hidden');
 }
@@ -1249,13 +1212,9 @@ window.editUserInForm = function(user) {
   userFormEmail.value = user.email;
   userFormEmail.disabled = true; // Email is the identifier and cannot be edited
   userFormRole.value = user.rol;
-  userFormProvider.value = user.auth_provider || 'google';
+  userFormProvider.value = 'local';
   userFormPassword.value = '';
-  if (userFormProvider.value === 'local') {
-    userFormPasswordGroup.classList.remove('hidden');
-  } else {
-    userFormPasswordGroup.classList.add('hidden');
-  }
+  userFormPasswordGroup.classList.remove('hidden');
   userFormStatus.value = user.estado;
   userFormStatusGroup.classList.remove('hidden');
   userFormError.classList.add('hidden');
@@ -1267,7 +1226,7 @@ async function handleUserFormSubmit(e) {
 
   const id = userFormId.value;
   const isEdit = !!id;
-  const url = isEdit ? `/api/users/${id}` : '/api/users';
+  const url = isEdit ? `${API_BASE}/users/${id}` : `${API_BASE}/users`;
   const method = isEdit ? 'PUT' : 'POST';
 
   const provider = userFormProvider.value;
@@ -1312,3 +1271,182 @@ async function handleUserFormSubmit(e) {
     userFormError.classList.remove('hidden');
   }
 }
+
+// --- Dashboard Logic ---
+window.showDashboard = function() {
+  // Clear selected song reference
+  state.currentSong = null;
+  state.activeDraft = null;
+
+  // Clear any active class from song items
+  document.querySelectorAll('.song-item').forEach(item => item.classList.remove('active'));
+  
+  // Highlight the dashboard button in sidebar
+  if (sidebarDashboardBtn) sidebarDashboardBtn.classList.add('active');
+  
+  // Hide editor and empty state, show dashboard
+  if (emptyState) emptyState.classList.add('hidden');
+  if (editorPanel) editorPanel.classList.add('hidden');
+  if (dashboardPanel) dashboardPanel.classList.remove('hidden');
+  
+  // Update dashboard date
+  const dashboardDate = document.getElementById('dashboard-date');
+  if (dashboardDate) {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    dashboardDate.textContent = new Date().toLocaleDateString('es-ES', options);
+  }
+
+  // Calculate stats dynamically from state.songs
+  const totalSongs = state.songs.length;
+  const draftsList = state.songs.filter(s => s.draft_status === 'draft');
+  const pendingList = state.songs.filter(s => s.draft_status === 'pending_approval');
+  const missingChordsList = state.songs.filter(s => parseInt(s.has_chords) === 0);
+  
+  // Update UI values
+  const totalSongsEl = document.getElementById('stat-total-songs');
+  const totalDraftsEl = document.getElementById('stat-total-drafts');
+  const totalPendingEl = document.getElementById('stat-total-pending');
+  const totalMissingChordsEl = document.getElementById('stat-missing-chords');
+  const draftsCountBadge = document.getElementById('drafts-count-badge');
+  const pendingCountBadge = document.getElementById('pending-count-badge');
+  const missingChordsCountBadge = document.getElementById('missing-chords-count-badge');
+
+  if (totalSongsEl) totalSongsEl.textContent = totalSongs;
+  if (totalDraftsEl) totalDraftsEl.textContent = draftsList.length;
+  if (totalPendingEl) totalPendingEl.textContent = pendingList.length;
+  if (totalMissingChordsEl) totalMissingChordsEl.textContent = missingChordsList.length;
+  if (draftsCountBadge) draftsCountBadge.textContent = draftsList.length;
+  if (pendingCountBadge) pendingCountBadge.textContent = pendingList.length;
+  if (missingChordsCountBadge) missingChordsCountBadge.textContent = missingChordsList.length;
+  
+  // Render Pending List
+  const pendingContainer = document.getElementById('dashboard-pending-list');
+  if (pendingContainer) {
+    if (pendingList.length === 0) {
+      pendingContainer.innerHTML = '<div class="empty-list-message">No hay alabanzas pendientes de aprobación.</div>';
+    } else {
+      pendingContainer.innerHTML = pendingList.map(song => {
+        const isAdmin = state.user && state.user.rol === 'admin';
+        const approveBtnHtml = isAdmin 
+          ? `<button class="btn btn-sm btn-success" onclick="dashboardApprove(${song.id}, event)">Aprobar</button>` 
+          : '';
+        return `
+          <div class="dashboard-item-card" onclick="dashboardReview(${song.id}, event)">
+            <div class="dashboard-item-info">
+              <div class="dashboard-item-title">[${song.himnario_codigo}] #${song.numero_en_himnario} - ${song.titulo || '(Sin título)'}</div>
+              <div class="dashboard-item-meta">
+                <span>ID: ${song.id}</span>
+                <span class="badge-role editor">Pendiente</span>
+              </div>
+            </div>
+            <div class="dashboard-item-actions">
+              <button class="btn btn-sm btn-secondary" onclick="dashboardReview(${song.id}, event)">Revisar</button>
+              ${approveBtnHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // Render Drafts List
+  const draftsContainer = document.getElementById('dashboard-drafts-list');
+  if (draftsContainer) {
+    if (draftsList.length === 0) {
+      draftsContainer.innerHTML = '<div class="empty-list-message">No hay borradores recientes.</div>';
+    } else {
+      draftsContainer.innerHTML = draftsList.map(song => {
+        return `
+          <div class="dashboard-item-card" onclick="loadSong(${song.id})">
+            <div class="dashboard-item-info">
+              <div class="dashboard-item-title">[${song.himnario_codigo}] #${song.numero_en_himnario} - ${song.titulo || '(Sin título)'}</div>
+              <div class="dashboard-item-meta">
+                <span>ID: ${song.id}</span>
+                <span class="badge-role admin">Borrador</span>
+              </div>
+            </div>
+            <div class="dashboard-item-actions">
+              <button class="btn btn-sm btn-primary" onclick="loadSong(${song.id}, event)">Editar</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // Render Missing Chords List
+  const missingChordsContainer = document.getElementById('dashboard-missing-chords-list');
+  if (missingChordsContainer) {
+    if (missingChordsList.length === 0) {
+      missingChordsContainer.innerHTML = '<div class="empty-list-message">Todas las alabanzas tienen acordes.</div>';
+    } else {
+      const showLimit = 50;
+      const slicedList = missingChordsList.slice(0, showLimit);
+      const suffixMsg = missingChordsList.length > showLimit
+        ? `<div class="empty-list-message" style="padding: 10px 0 0 0; font-size: 0.75rem;">Mostrando ${showLimit} primeras de ${missingChordsList.length}. Usa el buscador lateral para ver otras.</div>`
+        : '';
+      
+      missingChordsContainer.innerHTML = slicedList.map(song => {
+        let badgeHtml = '';
+        if (song.draft_status === 'draft') {
+          badgeHtml = '<span class="badge-role editor">Borrador</span>';
+        } else if (song.draft_status === 'pending_approval') {
+          badgeHtml = '<span class="badge-role admin">Pendiente</span>';
+        } else {
+          badgeHtml = '<span class="badge-role" style="background: rgba(0,0,0,0.04); color: var(--color-text-muted);">Sin cifras</span>';
+        }
+        return `
+          <div class="dashboard-item-card" onclick="loadSong(${song.id})">
+            <div class="dashboard-item-info">
+              <div class="dashboard-item-title">[${song.himnario_codigo}] #${song.numero_en_himnario} - ${song.titulo || '(Sin título)'}</div>
+              <div class="dashboard-item-meta">
+                <span>ID: ${song.id}</span>
+                ${badgeHtml}
+              </div>
+            </div>
+            <div class="dashboard-item-actions">
+              <button class="btn btn-sm btn-primary" onclick="loadSong(${song.id}, event)">Editar</button>
+            </div>
+          </div>
+        `;
+      }).join('') + suffixMsg;
+    }
+  }
+};
+
+window.dashboardReview = async function(songId, event) {
+  if (event) event.stopPropagation();
+  await loadSong(songId);
+  
+  // Programmatically click the Diff tab
+  const diffTab = document.getElementById('tab-diff-link');
+  if (diffTab) {
+    diffTab.click();
+  }
+};
+
+window.dashboardApprove = async function(songId, event) {
+  if (event) event.stopPropagation();
+  
+  if (!confirm("¿Estás seguro de que deseas aprobar este borrador de forma instantánea?")) {
+    return;
+  }
+  
+  try {
+    const res = await fetch(`${API_BASE}/drafts/${songId}/approve`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Error al aprobar.");
+    }
+    
+    showToast("Borrador aprobado con éxito.");
+    await fetchSongs(); // Refresh state list
+    showDashboard(); // Re-render dashboard
+  } catch (err) {
+    showToast(err.message, true);
+  }
+};

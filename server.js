@@ -42,28 +42,29 @@ for (const key in envConfig) {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'lalira_cms_secret_token_key_2026';
 
-// Detect if running on production host (under /home3/magnusal/lalira/) or local machine fallback
-const isProductionHost = __dirname.startsWith('/home3/magnusal/lalira');
+// Detect if running on production host or local machine fallback
+const isProductionHost = __dirname.includes('/home3/magnusal/') || fs.existsSync('/home3/magnusal/public_html/lalira');
 
 const DB_PATH = process.env.DB_PATH || (isProductionHost 
-  ? '/home3/magnusal/lalira/catalogo/catalogo.sqlite' 
-  : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo.sqlite');
+  ? '/home3/magnusal/public_html/lalira/catalogo/catalogo_v2.sqlite' 
+  : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo_v2.sqlite');
 
 const CMS_DB_PATH = process.env.CMS_DB_PATH || (isProductionHost 
   ? '/home3/magnusal/lalira/cms_internal.sqlite' 
   : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/cms_internal.sqlite');
 
 const VERSION_PATH = process.env.VERSION_PATH || (isProductionHost 
-  ? '/home3/magnusal/lalira/catalogo/version.json' 
-  : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/server/catalogo/version.json');
+  ? '/home3/magnusal/public_html/lalira/catalogo/version_v2.json' 
+  : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/server/catalogo/version_v2.json');
 
 const ASSETS_DB_PATH = process.env.ASSETS_DB_PATH || (isProductionHost 
-  ? '/home3/magnusal/lalira/assets/catalogo.sqlite' 
-  : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/assets/catalogo.sqlite');
+  ? '/home3/magnusal/public_html/lalira/assets/catalogo_v2.sqlite' 
+  : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/assets/catalogo_v2.sqlite');
 
 
 const app = express();
 app.use(express.json());
+app.use(express.static(__dirname));
 
 // Initialize Database Connections
 const dbCatalog = new DatabaseSync(DB_PATH);
@@ -688,25 +689,8 @@ app.post('/api/drafts/:songId/approve', authenticateToken, requireAdmin, (req, r
           if (lines.length === 0) continue;
 
           let tipo = 'estrofa';
-          let contentStart = 0;
 
-          const firstLine = lines[0].toLowerCase();
-          if (firstLine.startsWith('coro')) {
-            tipo = 'coro';
-            contentStart = 1;
-          } else if (firstLine.startsWith('final:')) {
-            tipo = 'final';
-            lines[0] = lines[0].substring(6).trim();
-          } else if (firstLine.startsWith('instrumentos')) {
-            tipo = 'instrumentos';
-            if (lines.length > 1) {
-              contentStart = 1;
-            } else {
-              lines[0] = '(Instrumental)';
-            }
-          }
-
-          const textLines = lines.slice(contentStart).join('\n');
+          const textLines = lines.join('\n');
           dbCatalog.prepare(`
             INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
             VALUES (?, ?, ?, ?, ?, 1)
@@ -911,9 +895,194 @@ app.post('/api/publish', authenticateToken, requireAdmin, (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// ── PUBLIC WEB MODULE ENDPOINTS ───────────────────────────────────────────────
+
+app.get('/api/public/filters', (req, res) => {
+  try {
+    const ritmos = dbCatalog.prepare("SELECT DISTINCT ritmo FROM cifra WHERE ritmo IS NOT NULL AND ritmo != '' ORDER BY ritmo").all().map(r => r.ritmo);
+    const tempos = dbCatalog.prepare("SELECT DISTINCT bpm FROM cifra WHERE bpm IS NOT NULL AND bpm > 0 ORDER BY bpm").all().map(t => parseInt(t.bpm, 10));
+    const tonalidades = dbCatalog.prepare("SELECT DISTINCT tonalidad FROM cancion WHERE tonalidad IS NOT NULL AND tonalidad != '' ORDER BY tonalidad").all().map(t => t.tonalidad);
+    const tiempos = dbCatalog.prepare("SELECT DISTINCT tiempo FROM cifra WHERE tiempo IS NOT NULL AND tiempo != '0' AND tiempo != '' ORDER BY tiempo").all().map(t => t.tiempo);
+    
+    res.json({
+      ritmos,
+      tempos,
+      tonalidades,
+      tiempos
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/public/sections', (req, res) => {
+  try {
+    const stmt = dbCatalog.prepare("SELECT id, nombre, orden FROM seccion ORDER BY orden");
+    res.json(stmt.all());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/public/hymnals', (req, res) => {
+  try {
+    const stmt = dbCatalog.prepare("SELECT id, nombre, codigo FROM himnario ORDER BY id");
+    res.json(stmt.all());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/public/songs', (req, res) => {
+  const { himnario_id, seccion_id, search, limit, ritmo, bpm, tonalidad, tiempo } = req.query;
+  try {
+    let sql = '';
+    const params = [];
+    
+    const needsCifra = (ritmo || bpm || tiempo);
+    const cifraJoin = needsCifra ? " LEFT JOIN (SELECT * FROM cifra GROUP BY cancion_id) cf ON c.id = cf.cancion_id " : "";
+    
+    if (search) {
+      const ftsSearch = `"${search.replace(/"/g, '""')}*"`;
+      const likeParam = `%${search}%`;
+      
+      sql = `
+        SELECT c.id, c.numero_en_himnario, c.tonalidad, c.himnario_id, c.seccion_id, h.codigo as himnario_codigo,
+               m.titulo, m.autor,
+               COALESCE(
+                   (SELECT snippet(estrofa_fts, -1, '<mark>', '</mark>', '...', 15)
+                    FROM estrofa_fts
+                    JOIN estrofa e ON estrofa_fts.rowid = e.id
+                    WHERE e.cancion_id = c.id AND estrofa_fts MATCH ?
+                    LIMIT 1),
+                   ''
+               ) as snippet
+        FROM cancion c
+        JOIN himnario h ON c.himnario_id = h.id
+        LEFT JOIN cancion_metadata m ON c.id = m.cancion_id AND m.idioma = 'es'
+        ${cifraJoin}
+        WHERE 1=1
+      `;
+      
+      params.push(ftsSearch);
+      
+      if (himnario_id) {
+        sql += " AND c.himnario_id = ?";
+        params.push(himnario_id);
+      }
+      if (seccion_id) {
+        sql += " AND c.seccion_id = ?";
+        params.push(seccion_id);
+      }
+      if (ritmo) {
+        sql += " AND cf.ritmo = ?";
+        params.push(ritmo);
+      }
+      if (bpm) {
+        sql += " AND cf.bpm = ?";
+        params.push(bpm);
+      }
+      if (tonalidad) {
+        sql += " AND c.tonalidad = ?";
+        params.push(tonalidad);
+      }
+      if (tiempo) {
+        sql += " AND cf.tiempo = ?";
+        params.push(tiempo);
+      }
+      
+      sql += ` AND (m.titulo LIKE ? OR c.numero_en_himnario LIKE ? OR c.id IN (
+          SELECT e.cancion_id FROM estrofa_fts f JOIN estrofa e ON f.rowid = e.id WHERE estrofa_fts MATCH ?
+      )) ORDER BY c.himnario_id, CAST(c.numero_en_himnario AS INTEGER), c.id LIMIT 50`;
+      
+      params.push(likeParam, likeParam, ftsSearch);
+      
+    } else {
+      sql = `
+        SELECT c.id, c.numero_en_himnario, c.tonalidad, c.himnario_id, c.seccion_id, h.codigo as himnario_codigo,
+               m.titulo, m.autor, '' as snippet
+        FROM cancion c
+        JOIN himnario h ON c.himnario_id = h.id
+        LEFT JOIN cancion_metadata m ON c.id = m.cancion_id AND m.idioma = 'es'
+        ${cifraJoin}
+        WHERE 1=1
+      `;
+      if (himnario_id) {
+        sql += " AND c.himnario_id = ?";
+        params.push(himnario_id);
+      }
+      if (seccion_id) {
+        sql += " AND c.seccion_id = ?";
+        params.push(seccion_id);
+      }
+      if (ritmo) {
+        sql += " AND cf.ritmo = ?";
+        params.push(ritmo);
+      }
+      if (bpm) {
+        sql += " AND cf.bpm = ?";
+        params.push(bpm);
+      }
+      if (tonalidad) {
+        sql += " AND c.tonalidad = ?";
+        params.push(tonalidad);
+      }
+      if (tiempo) {
+        sql += " AND cf.tiempo = ?";
+        params.push(tiempo);
+      }
+      
+      if (himnario_id || seccion_id) {
+        sql += " ORDER BY c.himnario_id, CAST(c.numero_en_himnario AS INTEGER), c.id ASC";
+      } else {
+        sql += " ORDER BY m.titulo ASC, c.id ASC";
+      }
+      
+      if (limit) {
+        sql += " LIMIT ?";
+        params.push(parseInt(limit, 10));
+      }
+    }
+    
+    const stmt = dbCatalog.prepare(sql);
+    res.json(stmt.all(...params));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/public/songs/:id', (req, res) => {
+  const songId = parseInt(req.params.id);
+  try {
+    const stmt = dbCatalog.prepare(`
+      SELECT c.id, c.himnario_id, c.seccion_id, c.numero_en_himnario, c.tonalidad, h.codigo as himnario_codigo
+      FROM cancion c
+      JOIN himnario h ON c.himnario_id = h.id
+      WHERE c.id = ?
+    `);
+    const song = stmt.get(songId);
+    if (!song) return res.status(404).json({ error: 'Alabanza no encontrada' });
+
+    // Metadata
+    const metaStmt = dbCatalog.prepare("SELECT idioma, titulo, autor, compositor, adaptador, traductor FROM cancion_metadata WHERE cancion_id = ?");
+    const metadata = {};
+    metaStmt.all(songId).forEach(r => {
+      metadata[r.idioma] = r;
+    });
+    song.metadata = metadata;
+
+    // Stanzas
+    const stanzasStmt = dbCatalog.prepare("SELECT id, orden, tipo, texto, repeticiones, idioma FROM estrofa WHERE cancion_id = ? ORDER BY orden");
+    song.estrofas = stanzasStmt.all(songId);
+
+    res.json(song);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Start Server
 const PORT = 8000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Node.js REST API de La Lira CMS corriendo en puerto ${PORT}...`);
 });
