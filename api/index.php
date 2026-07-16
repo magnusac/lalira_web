@@ -72,9 +72,18 @@ if (file_exists($env_file)) {
 // Determine if running on production host or local dev machine fallback
 $is_prod = str_contains(__DIR__, '/home3/magnusal/') || file_exists('/home3/magnusal/public_html/lalira');
 
-$db_path = getenv('DB_PATH') ?: ($is_prod 
-  ? '/home3/magnusal/public_html/lalira/catalogo/catalogo_v2.sqlite' 
-  : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo_v2.sqlite');
+$headers = getallheaders();
+$db_version = $headers['X-DB-Version'] ?? '2';
+
+if ($db_version === '1') {
+    $db_path = getenv('DB_PATH_V1') ?: ($is_prod 
+      ? '/home3/magnusal/public_html/lalira/catalogo/catalogo.sqlite' 
+      : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo.sqlite');
+} else {
+    $db_path = getenv('DB_PATH') ?: ($is_prod 
+      ? '/home3/magnusal/public_html/lalira/catalogo/catalogo_v2.sqlite' 
+      : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo_v2.sqlite');
+}
 
 $cms_db_path = getenv('CMS_DB_PATH') ?: ($is_prod 
   ? '/home3/magnusal/lalira/cms_internal.sqlite' 
@@ -440,20 +449,106 @@ if ($path === '/songs' && $request_method === 'GET') {
     
     $stmt = $dbCatalog->prepare($sql);
     $stmt->execute($params);
-    $songs = $stmt->fetchAll();
+    $songs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    $draftsQuery = $dbCms->query("SELECT cancion_id, status FROM draft_hymn");
-    $drafts = $draftsQuery->fetchAll();
+    $draftsQuery = $dbCms->query("SELECT * FROM draft_hymn");
+    $drafts = $draftsQuery->fetchAll(PDO::FETCH_ASSOC);
+    
     $draftMap = [];
+    $negativeDrafts = [];
     foreach ($drafts as $d) {
         $draftMap[$d['cancion_id']] = $d['status'];
+        if ((int)$d['cancion_id'] < 0) {
+            $negativeDrafts[] = $d;
+        }
     }
     
     foreach ($songs as &$s) {
         $s['draft_status'] = $draftMap[$s['id']] ?? null;
     }
+    unset($s);
     
-    json_response($songs);
+    // Resolve himnario codigos
+    $hymnalsQuery = $dbCatalog->query("SELECT id, codigo FROM himnario");
+    $hymnalsList = $hymnalsQuery->fetchAll(PDO::FETCH_ASSOC);
+    $hymnalMap = [];
+    foreach ($hymnalsList as $h) {
+        $hymnalMap[$h['id']] = $h['codigo'];
+    }
+
+    $addedSongs = [];
+    foreach ($negativeDrafts as $d) {
+        $data = json_decode($d['data_json'], true);
+        if (!$data) continue;
+
+        // Apply filters
+        if ($himnario_id !== null && $himnario_id !== '' && (!isset($data['himnario_id']) || $data['himnario_id'] != $himnario_id)) {
+            continue;
+        }
+        if ($seccion_id !== null && $seccion_id !== '' && (!isset($data['seccion_id']) || $data['seccion_id'] != $seccion_id)) {
+            continue;
+        }
+
+        $title = $data['metadata']['es']['titulo'] ?? $data['metadata']['pt']['titulo'] ?? '(Nueva Alabanza)';
+        $autor = $data['metadata']['es']['autor'] ?? '';
+        $num = $data['numero_en_himnario'] ?? '';
+
+        if ($search !== null && $search !== '') {
+            $searchLower = mb_strtolower($search, 'UTF-8');
+            $matchesTitle = mb_strpos(mb_strtolower($title, 'UTF-8'), $searchLower) !== false;
+            $matchesNumber = mb_strpos(mb_strtolower($num, 'UTF-8'), $searchLower) !== false;
+            
+            $matchesStanzas = false;
+            if (isset($data['estrofas']) && is_array($data['estrofas'])) {
+                foreach ($data['estrofas'] as $st) {
+                    if (isset($st['texto']) && mb_strpos(mb_strtolower($st['texto'], 'UTF-8'), $searchLower) !== false) {
+                        $matchesStanzas = true;
+                        break;
+                    }
+                }
+            }
+            if (!$matchesTitle && !$matchesNumber && !$matchesStanzas) {
+                continue;
+            }
+        }
+
+        $hasChords = 0;
+        if (isset($data['cifras'])) {
+            foreach ($data['cifras'] as $cif) {
+                if (isset($cif['contenido']) && trim($cif['contenido']) !== '') {
+                    $hasChords = 1;
+                    break;
+                }
+            }
+        }
+
+        $addedSongs[] = [
+            'id' => (int)$d['cancion_id'],
+            'numero_en_himnario' => $num,
+            'tonalidad' => $data['tonalidad'] ?? '',
+            'himnario_id' => (int)($data['himnario_id'] ?? 1),
+            'himnario_codigo' => $hymnalMap[$data['himnario_id'] ?? 1] ?? '',
+            'titulo' => $title,
+            'autor' => $autor,
+            'draft_status' => $d['status'],
+            'has_chords' => $hasChords
+        ];
+    }
+
+    $allSongs = array_merge($songs, $addedSongs);
+    usort($allSongs, function($a, $b) {
+        if ($a['himnario_id'] !== $b['himnario_id']) {
+            return $a['himnario_id'] - $b['himnario_id'];
+        }
+        $numA = (int)$a['numero_en_himnario'];
+        $numB = (int)$b['numero_en_himnario'];
+        if ($numA !== $numB) {
+            return $numA - $numB;
+        }
+        return $a['id'] - $b['id'];
+    });
+
+    json_response($allSongs);
 }
 
 // Helper to assemble full song JSON from the catalog SQLite
@@ -507,19 +602,72 @@ function getProductionSong($dbCatalog, $songId) {
     return $song;
 }
 
+// POST /songs
+if ($path === '/songs' && $request_method === 'POST') {
+    $user = require_auth();
+    $himnario_id = $input['himnario_id'] ?? null;
+    $numero_en_himnario = $input['numero_en_himnario'] ?? null;
+    $titulo = $input['titulo'] ?? null;
+    
+    if (!$himnario_id || !$numero_en_himnario || !$titulo) {
+        json_response(["error" => "Himnario, número y título inicial son requeridos"], 400);
+    }
+    
+    $minStmt = $dbCms->query("SELECT MIN(cancion_id) as minId FROM draft_hymn");
+    $minRow = $minStmt->fetch();
+    $newId = -1;
+    if ($minRow && $minRow['minId'] !== null && (int)$minRow['minId'] < 0) {
+        $newId = (int)$minRow['minId'] - 1;
+    }
+    
+    $now = gmdate('Y-m-d\TH:i:s\Z');
+    $songData = [
+        'numero_en_himnario' => trim((string)$numero_en_himnario),
+        'tonalidad' => '',
+        'seccion_id' => null,
+        'intro' => '',
+        'himnario_id' => (int)$himnario_id,
+        'metadata' => [
+            'es' => ['idioma' => 'es', 'titulo' => trim($titulo), 'autor' => '', 'compositor' => '', 'adaptador' => '', 'traductor' => ''],
+            'pt' => ['idioma' => 'pt', 'titulo' => '', 'autor' => '', 'compositor' => '', 'adaptador' => '', 'traductor' => ''],
+            'en' => ['idioma' => 'en', 'titulo' => '', 'autor' => '', 'compositor' => '', 'adaptador' => '', 'traductor' => '']
+        ],
+        'cifras' => [
+            'es' => ['idioma' => 'es', 'contenido' => '', 'tonalidad' => '', 'tiempo' => '', 'bpm' => 0, 'ritmo' => ''],
+            'pt' => ['idioma' => 'pt', 'contenido' => '', 'tonalidad' => '', 'tiempo' => '', 'bpm' => 0, 'ritmo' => ''],
+            'en' => ['idioma' => 'en', 'contenido' => '', 'tonalidad' => '', 'tiempo' => '', 'bpm' => 0, 'ritmo' => '']
+        ],
+        'estrofas' => [],
+        'notas' => []
+    ];
+    
+    $insertStmt = $dbCms->prepare("
+        INSERT INTO draft_hymn (cancion_id, editor_id, status, data_json, creado_en, modificado_en)
+        VALUES (?, ?, 'draft', ?, ?, ?)
+    ");
+    $insertStmt->execute([$newId, $user['id'], json_encode($songData), $now, $now]);
+    
+    log_audit($dbCms, $user['id'], 'SAVE_DRAFT', $newId, "Borrador de nueva canción \"" . $titulo . "\" creado.");
+    json_response(["success" => true, "id" => $newId]);
+}
+
 // GET /songs/:id
-if (preg_match('/^\/songs\/(\d+)$/', $path, $matches) && $request_method === 'GET') {
+if (preg_match('/^\/songs\/(-?\d+)$/', $path, $matches) && $request_method === 'GET') {
     $user = require_auth();
     $songId = (int)$matches[1];
     
-    $prodSong = getProductionSong($dbCatalog, $songId);
-    if (!$prodSong) {
-        json_response(["error" => "Alabanza no encontrada"], 404);
+    $prodSong = null;
+    if ($songId >= 0) {
+        $prodSong = getProductionSong($dbCatalog, $songId);
     }
     
     $draftStmt = $dbCms->prepare("SELECT * FROM draft_hymn WHERE cancion_id = ?");
     $draftStmt->execute([$songId]);
     $draft = $draftStmt->fetch();
+    
+    if (!$prodSong && !$draft) {
+        json_response(["error" => "Alabanza no encontrada"], 404);
+    }
     
     json_response([
         "production" => $prodSong,
@@ -534,7 +682,7 @@ if (preg_match('/^\/songs\/(\d+)$/', $path, $matches) && $request_method === 'GE
 }
 
 // POST /drafts/:songId
-if (preg_match('/^\/drafts\/(\d+)$/', $path, $matches) && $request_method === 'POST') {
+if (preg_match('/^\/drafts\/(-?\d+)$/', $path, $matches) && $request_method === 'POST') {
     $user = require_auth();
     $songId = (int)$matches[1];
     $songData = $input;
@@ -564,7 +712,7 @@ if (preg_match('/^\/drafts\/(\d+)$/', $path, $matches) && $request_method === 'P
 }
 
 // POST /drafts/:songId/submit
-if (preg_match('/^\/drafts\/(\d+)\/submit$/', $path, $matches) && $request_method === 'POST') {
+if (preg_match('/^\/drafts\/(-?\d+)\/submit$/', $path, $matches) && $request_method === 'POST') {
     $user = require_auth();
     $songId = (int)$matches[1];
     
@@ -579,7 +727,7 @@ if (preg_match('/^\/drafts\/(\d+)\/submit$/', $path, $matches) && $request_metho
 }
 
 // POST /drafts/:songId/reject
-if (preg_match('/^\/drafts\/(\d+)\/reject$/', $path, $matches) && $request_method === 'POST') {
+if (preg_match('/^\/drafts\/(-?\d+)\/reject$/', $path, $matches) && $request_method === 'POST') {
     $user = require_auth();
     require_admin($user);
     $songId = (int)$matches[1];
@@ -596,7 +744,7 @@ if (preg_match('/^\/drafts\/(\d+)\/reject$/', $path, $matches) && $request_metho
 }
 
 // POST /drafts/:songId/approve
-if (preg_match('/^\/drafts\/(\d+)\/approve$/', $path, $matches) && $request_method === 'POST') {
+if (preg_match('/^\/drafts\/(-?\d+)\/approve$/', $path, $matches) && $request_method === 'POST') {
     $user = require_auth();
     require_admin($user);
     $songId = (int)$matches[1];
@@ -613,18 +761,38 @@ if (preg_match('/^\/drafts\/(\d+)\/approve$/', $path, $matches) && $request_meth
     try {
         $dbCatalog->beginTransaction();
         
-        $updateSongStmt = $dbCatalog->prepare("
-            UPDATE cancion
-            SET seccion_id = ?, tonalidad = ?, intro = ?, numero_en_himnario = ?
-            WHERE id = ?
-        ");
-        $updateSongStmt->execute([
-            $songData['seccion_id'],
-            $songData['tonalidad'],
-            $songData['intro'],
-            $songData['numero_en_himnario'],
-            $songId
-        ]);
+        $targetSongId = $songId;
+        
+        if ($songId < 0) {
+            // Insert new song
+            $insertSongStmt = $dbCatalog->prepare("
+                INSERT INTO cancion (himnario_id, seccion_id, tonalidad, intro, numero_en_himnario)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            $insertSongStmt->execute([
+                $songData['himnario_id'],
+                $songData['seccion_id'],
+                $songData['tonalidad'],
+                $songData['intro'],
+                $songData['numero_en_himnario']
+            ]);
+            $targetSongId = (int)$dbCatalog->lastInsertId();
+        } else {
+            // Update existing song
+            $updateSongStmt = $dbCatalog->prepare("
+                UPDATE cancion
+                SET himnario_id = ?, seccion_id = ?, tonalidad = ?, intro = ?, numero_en_himnario = ?
+                WHERE id = ?
+            ");
+            $updateSongStmt->execute([
+                $songData['himnario_id'],
+                $songData['seccion_id'],
+                $songData['tonalidad'],
+                $songData['intro'],
+                $songData['numero_en_himnario'],
+                $songId
+            ]);
+        }
         
         foreach (['es', 'pt', 'en'] as $lang) {
             $meta = $songData['metadata'][$lang] ?? null;
@@ -634,7 +802,7 @@ if (preg_match('/^\/drafts\/(\d+)\/approve$/', $path, $matches) && $request_meth
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 ");
                 $metaStmt->execute([
-                    $songId,
+                    $targetSongId,
                     $lang,
                     trim($meta['titulo']),
                     trim($meta['autor'] ?? ''),
@@ -646,7 +814,7 @@ if (preg_match('/^\/drafts\/(\d+)\/approve$/', $path, $matches) && $request_meth
         }
         
         $delStanzas = $dbCatalog->prepare("DELETE FROM estrofa WHERE cancion_id = ?");
-        $delStanzas->execute([$songId]);
+        $delStanzas->execute([$targetSongId]);
         
         $stanzas = $songData['estrofas'] ?? [];
         foreach ($stanzas as $s) {
@@ -655,7 +823,7 @@ if (preg_match('/^\/drafts\/(\d+)\/approve$/', $path, $matches) && $request_meth
                     INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
                     VALUES (?, ?, ?, ?, ?, ?)
                 ");
-                $insStanza->execute([$songId, $s['idioma'], $s['orden'], $s['tipo'], trim($s['texto']), $s['repeticiones'] ?? 1]);
+                $insStanza->execute([$targetSongId, $s['idioma'], $s['orden'], $s['tipo'], trim($s['texto']), $s['repeticiones'] ?? 1]);
             }
         }
         
@@ -668,7 +836,7 @@ if (preg_match('/^\/drafts\/(\d+)\/approve$/', $path, $matches) && $request_meth
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 ");
                 $insCifra->execute([
-                    $songId,
+                    $targetSongId,
                     $lang,
                     trim($cifra['contenido']),
                     $cifra['tonalidad'] ?? null,
@@ -678,12 +846,12 @@ if (preg_match('/^\/drafts\/(\d+)\/approve$/', $path, $matches) && $request_meth
                 ]);
             } else {
                 $delCifra = $dbCatalog->prepare("DELETE FROM cifra WHERE cancion_id = ? AND idioma = ?");
-                $delCifra->execute([$songId, $lang]);
+                $delCifra->execute([$targetSongId, $lang]);
             }
         }
         
         $delNotes = $dbCatalog->prepare("DELETE FROM nota WHERE cancion_id = ?");
-        $delNotes->execute([$songId]);
+        $delNotes->execute([$targetSongId]);
         $notes = $songData['notas'] ?? [];
         foreach ($notes as $note) {
             if (!empty($note['texto']) || !empty($note['referencia'])) {
@@ -692,7 +860,7 @@ if (preg_match('/^\/drafts\/(\d+)\/approve$/', $path, $matches) && $request_meth
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $insNote->execute([
-                    $songId,
+                    $targetSongId,
                     $note['tipo'],
                     $note['marcador_numero'],
                     $note['fragmento_letra'] ?? '',
@@ -709,8 +877,8 @@ if (preg_match('/^\/drafts\/(\d+)\/approve$/', $path, $matches) && $request_meth
         $delDraft = $dbCms->prepare("DELETE FROM draft_hymn WHERE cancion_id = ?");
         $delDraft->execute([$songId]);
         
-        log_audit($dbCms, $user['id'], 'APPROVE', $songId, "Borrador aprobado e integrado a producción.");
-        json_response(["success" => true]);
+        log_audit($dbCms, $user['id'], 'APPROVE', $targetSongId, $songId < 0 ? "Nueva canción aprobada e integrada a producción con ID " . $targetSongId : "Borrador aprobado e integrado a producción.");
+        json_response(["success" => true, "targetSongId" => $targetSongId]);
         
     } catch (Exception $e) {
         $dbCatalog->rollBack();

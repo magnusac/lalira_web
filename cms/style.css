@@ -184,14 +184,45 @@ body::after {
 }
 
 .db-status-badge {
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid var(--border-glass);
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
   display: flex;
   align-items: center;
   gap: 8px;
+  background: rgba(46, 204, 113, 0.1);
+  color: var(--color-success);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  border: 1px solid rgba(46, 204, 113, 0.2);
+}
+
+.db-selector-wrapper select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.db-selector-wrapper select:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.db-selector-wrapper select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(111, 66, 193, 0.25);
+}
+
+.db-selector-wrapper select option {
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .status-dot {

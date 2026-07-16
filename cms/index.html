@@ -70,10 +70,13 @@
   <div class="cms-container hidden" id="app-container">
     <!-- Left Sidebar: Song List & Filters -->
     <aside class="cms-sidebar">
-      <div class="sidebar-nav-container">
-        <button id="sidebar-dashboard-btn" class="sidebar-nav-btn active">
+      <div class="sidebar-nav-container" style="display: flex; gap: 8px;">
+        <button id="sidebar-dashboard-btn" class="sidebar-nav-btn active" style="flex: 1; width: auto;">
           <svg viewBox="0 0 24 24" class="btn-icon"><path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-          Inicio / Dashboard
+          Inicio
+        </button>
+        <button id="add-song-btn" class="btn btn-primary" style="padding: 0 16px; border-radius: var(--radius-md);" title="Nueva Alabanza">
+          + Nueva
         </button>
       </div>
       <div class="filter-box">
@@ -223,6 +226,15 @@
             </div>
           </div>
           
+          <div class="song-navigation-group" style="display: flex; gap: 8px; align-items: center; margin-left: 16px; margin-right: auto;">
+            <button id="prev-song-btn" class="btn btn-secondary btn-sm" style="height: 32px;" title="Alabanza Anterior">
+              &lt; Anterior
+            </button>
+            <button id="next-song-btn" class="btn btn-secondary btn-sm" style="height: 32px;" title="Alabanza Siguiente">
+              Siguiente &gt;
+            </button>
+          </div>
+          
           <!-- Actions & Approval Panel -->
           <div class="editor-header-actions" id="action-buttons-container">
             <button id="save-draft-btn" class="btn btn-secondary">
@@ -343,6 +355,10 @@
                     <label for="input-key">Tonalidad Inicial</label>
                     <input type="text" id="input-key" placeholder="Ej: Em, F">
                   </div>
+                </div>
+                <div class="form-group">
+                  <label for="input-hymnary">Himnario</label>
+                  <select id="input-hymnary" disabled></select>
                 </div>
                 <div class="form-group">
                   <label for="input-section">Sección del Himnario</label>
@@ -654,6 +670,34 @@
         <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
           <button type="button" id="cancel-user-form" class="btn btn-secondary">Cancelar</button>
           <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal for Creating New Song Draft -->
+  <div id="new-song-modal" class="modal-overlay hidden" style="z-index: 3000;">
+    <div class="modal-card" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>Nueva Alabanza</h2>
+      </div>
+      <form id="new-song-form">
+        <div class="form-group">
+          <label for="new-song-hymnary">Himnario</label>
+          <select id="new-song-hymnary" required></select>
+        </div>
+        <div class="form-group" style="margin-top: 12px;">
+          <label for="new-song-number">Número en Himnario</label>
+          <input type="text" id="new-song-number" required placeholder="Ej: 145">
+        </div>
+        <div class="form-group" style="margin-top: 12px;">
+          <label for="new-song-title">Título de la Alabanza (Español)</label>
+          <input type="text" id="new-song-title" required placeholder="Ej: Sublime Gracia">
+        </div>
+        <div id="new-song-error" class="login-error-msg hidden" style="margin-top: 10px; color: var(--color-primary);">Error al crear la alabanza</div>
+        <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" id="cancel-new-song" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear</button>
         </div>
       </form>
     </div>

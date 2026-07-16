@@ -244,6 +244,96 @@ function setupEventListeners() {
 
   // Add note to list button
   document.getElementById('add-note-list-btn').addEventListener('click', addNoteToWorkingList);
+
+  // New Song and Navigation button listeners
+  document.getElementById('prev-song-btn').addEventListener('click', () => navigateSong(-1));
+  document.getElementById('next-song-btn').addEventListener('click', () => navigateSong(1));
+
+  const addSongBtn = document.getElementById('add-song-btn');
+  const newSongModal = document.getElementById('new-song-modal');
+  const cancelNewSong = document.getElementById('cancel-new-song');
+  const newSongForm = document.getElementById('new-song-form');
+  const newSongError = document.getElementById('new-song-error');
+
+  if (addSongBtn) {
+    addSongBtn.addEventListener('click', () => {
+      document.getElementById('new-song-number').value = '';
+      document.getElementById('new-song-title').value = '';
+      newSongError.classList.add('hidden');
+      
+      const newSongHymnary = document.getElementById('new-song-hymnary');
+      if (newSongHymnary && state.hymnals) {
+        newSongHymnary.innerHTML = state.hymnals.map(h => `<option value="${h.id}">${h.nombre} (${h.codigo})</option>`).join('');
+      }
+
+      newSongModal.classList.remove('hidden');
+    });
+  }
+
+  if (cancelNewSong) {
+    cancelNewSong.addEventListener('click', () => {
+      newSongModal.classList.add('hidden');
+    });
+  }
+
+  if (newSongForm) {
+    newSongForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      newSongError.classList.add('hidden');
+
+      const himnarioId = parseInt(document.getElementById('new-song-hymnary').value);
+      const numero = document.getElementById('new-song-number').value.trim();
+      const titulo = document.getElementById('new-song-title').value.trim();
+
+      if (!himnarioId || !numero || !titulo) {
+        newSongError.textContent = "Todos los campos son obligatorios.";
+        newSongError.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/songs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.token}`
+          },
+          body: JSON.stringify({
+            himnario_id: himnarioId,
+            numero_en_himnario: numero,
+            titulo: titulo
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Error al crear borrador");
+        }
+
+        const data = await res.json();
+        newSongModal.classList.add('hidden');
+        showToast(`Borrador creado exitosamente.`);
+        await fetchSongs();
+        await loadSong(data.id);
+      } catch (err) {
+        newSongError.textContent = err.message;
+        newSongError.classList.remove('hidden');
+      }
+    });
+  }
+}
+
+function navigateSong(direction) {
+  if (!state.songs || state.songs.length === 0 || state.currentSongId === undefined) return;
+  const currentIndex = state.songs.findIndex(s => s.id === state.currentSongId);
+  if (currentIndex === -1) return;
+
+  const nextIndex = currentIndex + direction;
+  if (nextIndex >= 0 && nextIndex < state.songs.length) {
+    loadSong(state.songs[nextIndex].id);
+  } else {
+    showToast(direction === -1 ? "Ya estás en la primera alabanza." : "Ya estás en la última alabanza.");
+  }
 }
 
 // ── AUTHENTICATION LIFECYCLE ──────────────────────────────────────────────────
@@ -407,7 +497,7 @@ function renderSongsList() {
   }
 
   songsList.innerHTML = state.songs.map(song => {
-    const activeClass = (state.currentSong && state.currentSong.id === song.id) ? 'active' : '';
+    const activeClass = (state.currentSongId === song.id) ? 'active' : '';
     
     let draftStatusDot = '';
     if (song.draft_status === 'draft') {
@@ -447,8 +537,9 @@ window.loadSong = async function(songId) {
     const data = await res.json();
     state.currentSong = data.production;
     state.activeDraft = data.draft; // Can be null
+    state.currentSongId = songId;
     state.currentCifraLang = 'es';
-    state.notesList = state.activeDraft ? (state.activeDraft.data.notas || []) : (state.currentSong.notas || []);
+    state.notesList = state.activeDraft ? (state.activeDraft.data.notas || []) : (state.currentSong?.notas || []);
 
     // Sync active highlight
     fetchSongsListSync();
@@ -462,11 +553,16 @@ window.loadSong = async function(songId) {
     const workingData = state.activeDraft ? state.activeDraft.data : state.currentSong;
     
     document.getElementById('song-display-title').textContent = workingData.metadata.es.titulo || workingData.metadata.pt.titulo || "Sin título";
-    document.getElementById('song-display-meta').textContent = `Himnario ${state.currentSong.himnario_codigo} — Número ${workingData.numero_en_himnario}`;
+    
+    const himnarioId = workingData.himnario_id || 1;
+    const himnarioObj = state.hymnals.find(h => h.id == himnarioId) || { codigo: 'P', nombre: 'Personalizado' };
+    const himnarioCodigo = state.currentSong ? state.currentSong.himnario_codigo : himnarioObj.codigo;
+
+    document.getElementById('song-display-meta').textContent = `Himnario ${himnarioCodigo} — Número ${workingData.numero_en_himnario}`;
     
     const badge = document.getElementById('hymnary-badge');
-    badge.textContent = state.currentSong.himnario_codigo;
-    badge.className = `song-hymnary-tag badge-${state.currentSong.himnary_badge || state.currentSong.himnario_codigo}`;
+    badge.textContent = himnarioCodigo;
+    badge.className = `song-hymnary-tag badge-${state.currentSong?.himnary_badge || state.currentSong?.himnario_codigo || himnarioCodigo}`;
 
     // Status Badge & Controls
     if (state.activeDraft) {
@@ -497,6 +593,12 @@ window.loadSong = async function(songId) {
     document.getElementById('input-section').value = workingData.seccion_id || "";
     document.getElementById('input-intro').value = workingData.intro || "";
 
+    const inputHymnary = document.getElementById('input-hymnary');
+    if (inputHymnary) {
+      inputHymnary.disabled = (songId >= 0);
+      inputHymnary.value = workingData.himnario_id || "";
+    }
+
     // Translations
     for (const lang of ['es', 'pt', 'en']) {
       const meta = workingData.metadata[lang] || { titulo: '', autor: '', compositor: '', adaptador: '', traductor: '' };
@@ -523,7 +625,7 @@ function fetchSongsListSync() {
   const items = Array.from(songsList.children);
   items.forEach(item => {
     item.classList.remove('active');
-    if (state.currentSong && item.outerHTML.includes(`loadSong(${state.currentSong.id})`)) {
+    if (state.currentSongId !== undefined && item.outerHTML.includes(`loadSong(${state.currentSongId})`)) {
       item.classList.add('active');
     }
   });
@@ -823,7 +925,7 @@ function addNoteToWorkingList() {
 // ── SAVE & APPROVAL INTEGRATION ─────────────────────────────────────────────
 
 async function saveDraftSong(submitForApproval = false) {
-  if (!state.currentSong) return;
+  if (state.currentSongId === undefined) return;
 
   const btn = submitForApproval ? submitApprovalBtn : saveDraftBtn;
   const oldText = btn.innerHTML;
@@ -833,6 +935,7 @@ async function saveDraftSong(submitForApproval = false) {
   try {
     // Collect working draft schema
     const workingData = {
+      himnario_id: parseInt(document.getElementById('input-hymnary').value) || null,
       numero_en_himnario: document.getElementById('input-number').value.trim(),
       tonalidad: document.getElementById('input-key').value.trim(),
       seccion_id: parseInt(document.getElementById('input-section').value) || null,
@@ -858,7 +961,7 @@ async function saveDraftSong(submitForApproval = false) {
     // Chords (Cifras)
     // Synchronize active fields in UI first
     const activeL = state.currentCifraLang;
-    const oldCifras = state.activeDraft ? state.activeDraft.data.cifras : state.currentSong.cifras;
+    const oldCifras = state.activeDraft ? state.activeDraft.data.cifras : (state.currentSong?.cifras || {});
     for (const lang of ['es', 'pt', 'en']) {
       if (lang === activeL) {
         workingData.cifras[lang] = {
@@ -895,7 +998,7 @@ async function saveDraftSong(submitForApproval = false) {
     });
 
     // POST Save Draft
-    let res = await fetch(`${API_BASE}/drafts/${state.currentSong.id}`, {
+    let res = await fetch(`${API_BASE}/drafts/${state.currentSongId}`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -907,7 +1010,7 @@ async function saveDraftSong(submitForApproval = false) {
 
     // POST Submit if flagged
     if (submitForApproval) {
-      res = await fetch(`${API_BASE}/drafts/${state.currentSong.id}/submit`, {
+      res = await fetch(`${API_BASE}/drafts/${state.currentSongId}/submit`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${state.token}` }
       });
@@ -918,8 +1021,8 @@ async function saveDraftSong(submitForApproval = false) {
     }
 
     // Reload active song detail
-    await loadSong(state.currentSong.id);
     await fetchSongs();
+    await loadSong(state.currentSongId);
   } catch {
     showToast("Error al guardar borrador.", true);
   } finally {
@@ -929,10 +1032,10 @@ async function saveDraftSong(submitForApproval = false) {
 }
 
 async function approveDraftSong() {
-  if (!state.currentSong || !confirm("¿Estás seguro de aprobar este borrador? Se aplicará directamente en la base de datos de producción.")) return;
+  if (!state.currentSongId || !confirm("¿Estás seguro de aprobar este borrador? Se aplicará directamente en la base de datos de producción.")) return;
 
   try {
-    const res = await fetch(`${API_BASE}/drafts/${state.currentSong.id}/approve`, {
+    const res = await fetch(`${API_BASE}/drafts/${state.currentSongId}/approve`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${state.token}` }
     });
@@ -941,21 +1044,24 @@ async function approveDraftSong() {
       throw new Error(err.error);
     }
 
+    const data = await res.json();
+    const newSongId = data.targetSongId || state.currentSongId;
+
     showToast("Borrador aprobado e integrado a producción.");
-    await loadSong(state.currentSong.id);
     await fetchSongs();
+    await loadSong(newSongId);
   } catch (err) {
     showToast(`Error al aprobar: ${err.message}`, true);
   }
 }
 
 async function rejectDraftSong() {
-  if (!state.currentSong) return;
+  if (!state.currentSongId) return;
   const motivo = prompt("Especifica el motivo del rechazo del borrador:");
   if (motivo === null) return; // Cancelled
 
   try {
-    const res = await fetch(`${API_BASE}/drafts/${state.currentSong.id}/reject`, {
+    const res = await fetch(`${API_BASE}/drafts/${state.currentSongId}/reject`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -966,8 +1072,8 @@ async function rejectDraftSong() {
     if (!res.ok) throw new Error();
 
     showToast("Borrador rechazado y devuelto a edición.");
-    await loadSong(state.currentSong.id);
     await fetchSongs();
+    await loadSong(state.currentSongId);
   } catch {
     showToast("Error al rechazar borrador.", true);
   }
@@ -1008,7 +1114,7 @@ function renderDiffView() {
   const prodView = document.getElementById('diff-production-view');
   const draftView = document.getElementById('diff-draft-view');
 
-  if (!state.currentSong || !state.activeDraft) {
+  if (!state.activeDraft) {
     prodView.innerHTML = 'No hay borrador cargado.';
     draftView.innerHTML = 'No hay borrador cargado.';
     return;
@@ -1018,9 +1124,10 @@ function renderDiffView() {
   const d = state.activeDraft.data;
 
   // Let's print clean side-by-side textual comparative JSON outputs
-  const getComparativeText = (songObj) => {
-    let out = `Himno ID: ${songObj.id || p.id}\n`;
-    out += `Número: ${songObj.numero_en_himnario}\n`;
+  const getComparativeText = (songObj, isProdObj = false) => {
+    if (!songObj) return "";
+    let out = `Himno ID: ${songObj.id || (isProdObj ? (p ? p.id : '') : (state.currentSongId))}\n`;
+    out += `Número: ${songObj.numero_en_himnario || ''}\n`;
     out += `Tono: ${songObj.tonalidad || '—'}\n`;
     out += `Intro: ${songObj.intro || '—'}\n\n`;
 
@@ -1050,12 +1157,17 @@ function renderDiffView() {
     return out;
   };
 
-  const prodText = getComparativeText(p);
-  const draftText = getComparativeText(d);
+  const prodText = p ? getComparativeText(p, true) : "";
+  const draftText = getComparativeText(d, false);
 
-  // Highlighting lines side-by-side using the line helper
-  prodView.innerHTML = generateLineDiff(prodText, draftText).replace(/\+ .*/g, ''); // Hide added lines in production view
-  draftView.innerHTML = generateLineDiff(prodText, draftText);
+  if (!p) {
+    prodView.innerHTML = '<div style="color: var(--color-text-muted); font-style: italic; padding: 20px;">Nueva alabanza inédita (no existe en producción)</div>';
+    draftView.textContent = draftText;
+  } else {
+    // Highlighting lines side-by-side using the line helper
+    prodView.innerHTML = generateLineDiff(prodText, draftText).replace(/\+ .*/g, ''); // Hide added lines in production view
+    draftView.innerHTML = generateLineDiff(prodText, draftText);
+  }
 }
 
 // ── AUDIT LOGS MODAL ─────────────────────────────────────────────────────────
