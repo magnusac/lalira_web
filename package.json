@@ -4,11 +4,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 127.0.0.1 --port 8080",
     "build": "vite build",
     "preview": "vite preview",
     "api": "node server.js",
-    "dev-cms": "node server.js & vite",
+    "dev-cms": "node server.js & vite --host 127.0.0.1 --port 8080",
     "db:pull": "scp -i ~/.ssh/id_lalira magnusal@maranata.org:/home3/magnusal/public_html/lalira/catalogo/catalogo.sqlite /Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo.sqlite && scp -i ~/.ssh/id_lalira magnusal@maranata.org:/home3/magnusal/public_html/lalira/catalogo/version.json /Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/server/catalogo/version.json",
     "db:push": "scp -i ~/.ssh/id_lalira /Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo.sqlite magnusal@maranata.org:/home3/magnusal/public_html/lalira/catalogo/catalogo.sqlite && scp -i ~/.ssh/id_lalira /Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/server/catalogo/version.json magnusal@maranata.org:/home3/magnusal/public_html/lalira/catalogo/version.json"
   },

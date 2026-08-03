@@ -443,6 +443,54 @@ app.get('/api/sections', authenticateToken, (req, res) => {
 
 // ── SONGS & DRAFTS ENDPOINTS ──────────────────────────────────────────────────
 
+// Create a new song draft (negative ID)
+app.post('/api/songs', authenticateToken, (req, res) => {
+  const { himnario_id, numero_en_himnario, titulo } = req.body;
+  if (!himnario_id || !numero_en_himnario || !titulo) {
+    return res.status(400).json({ error: 'Himnario, número y título inicial son requeridos' });
+  }
+
+  try {
+    const minRow = dbCms.prepare("SELECT MIN(cancion_id) as minId FROM draft_hymn").get();
+    let newId = -1;
+    if (minRow && minRow.minId !== null && minRow.minId < 0) {
+      newId = minRow.minId - 1;
+    }
+
+    const now = new Date().toISOString();
+    const songData = {
+      numero_en_himnario: numero_en_himnario.toString().trim(),
+      tonalidad: "",
+      seccion_id: null,
+      intro: "",
+      himnario_id: parseInt(himnario_id),
+      metadata: {
+        es: { idioma: "es", titulo: titulo.trim(), autor: "", compositor: "", adaptador: "", traductor: "" },
+        pt: { idioma: "pt", titulo: "", autor: "", compositor: "", adaptador: "", traductor: "" },
+        en: { idioma: "en", titulo: "", autor: "", compositor: "", adaptador: "", traductor: "" }
+      },
+      cifras: {
+        es: { idioma: "es", contenido: "", tonalidad: "", tempo: "", bpm: 0, ritmo: "" },
+        pt: { idioma: "pt", contenido: "", tonalidad: "", tempo: "", bpm: 0, ritmo: "" },
+        en: { idioma: "en", contenido: "", tonalidad: "", tempo: "", bpm: 0, ritmo: "" }
+      },
+      estrofas: [],
+      notas: []
+    };
+
+    const insertStmt = dbCms.prepare(`
+      INSERT INTO draft_hymn (cancion_id, editor_id, status, data_json, creado_en, modificado_en)
+      VALUES (?, ?, 'draft', ?, ?, ?)
+    `);
+    insertStmt.run(newId, req.user.id, JSON.stringify(songData), now, now);
+
+    logAudit(req.user.id, 'SAVE_DRAFT', newId, `Borrador de nueva canción "${titulo}" creado con ID ${newId}.`);
+    res.json({ success: true, id: newId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // List songs (combining approved state with draft state indicators)
 app.get('/api/songs', authenticateToken, (req, res) => {
   const { himnario_id, seccion_id, search } = req.query;
@@ -477,17 +525,80 @@ app.get('/api/songs', authenticateToken, (req, res) => {
     const stmt = dbCatalog.prepare(sql);
     const songs = stmt.all(...params);
 
-    // Fetch active drafts to overlay status badges
-    const draftsStmt = dbCms.prepare("SELECT cancion_id, status FROM draft_hymn");
+    // Fetch active drafts
+    const draftsStmt = dbCms.prepare("SELECT * FROM draft_hymn");
     const drafts = draftsStmt.all();
     const draftMap = new Map(drafts.map(d => [d.cancion_id, d.status]));
+
+    // Build himnario mapping to resolve himnario_codigo
+    const hymnalsStmt = dbCatalog.prepare("SELECT id, codigo FROM himnario");
+    const hymnalsList = hymnalsStmt.all();
+    const hymnalMap = new Map(hymnalsList.map(h => [h.id, h.codigo]));
 
     const songsWithDraftStatus = songs.map(s => ({
       ...s,
       draft_status: draftMap.get(s.id) || null // 'draft', 'pending_approval' or null
     }));
 
-    res.json(songsWithDraftStatus);
+    // Handle negative drafts (new song drafts)
+    const negativeDrafts = drafts.filter(d => d.cancion_id < 0);
+    const addedSongs = [];
+    for (const d of negativeDrafts) {
+      try {
+        const data = JSON.parse(d.data_json);
+
+        // Apply filters
+        if (himnario_id && data.himnario_id != himnario_id) continue;
+        if (seccion_id && data.seccion_id != seccion_id) continue;
+
+        const title = (data.metadata && data.metadata.es && data.metadata.es.titulo) ||
+                      (data.metadata && data.metadata.pt && data.metadata.pt.titulo) ||
+                      "(Nueva Alabanza)";
+        const autor = (data.metadata && data.metadata.es && data.metadata.es.autor) || "";
+        const num = data.numero_en_himnario || "";
+
+        if (search) {
+          const searchLower = search.toLowerCase();
+          const matchesTitle = title.toLowerCase().includes(searchLower);
+          const matchesNumber = num.toLowerCase().includes(searchLower);
+
+          let matchesStanzas = false;
+          if (data.estrofas && Array.isArray(data.estrofas)) {
+            matchesStanzas = data.estrofas.some(s => s.texto && s.texto.toLowerCase().includes(searchLower));
+          }
+          if (!matchesTitle && !matchesNumber && !matchesStanzas) continue;
+        }
+
+        addedSongs.push({
+          id: d.cancion_id,
+          numero_en_himnario: num,
+          tonalidad: data.tonalidad || "",
+          himnario_id: data.himnario_id,
+          himnario_codigo: hymnalMap.get(data.himnario_id) || "",
+          titulo: title,
+          autor: autor,
+          draft_status: d.status
+        });
+      } catch (err) {
+        console.error("Error parsing negative draft JSON:", err);
+      }
+    }
+
+    // Combine and sort
+    const allSongs = [...songsWithDraftStatus, ...addedSongs];
+    allSongs.sort((a, b) => {
+      if (a.himnario_id !== b.himnario_id) {
+        return a.himnario_id - b.himnario_id;
+      }
+      const numA = parseInt(a.numero_en_himnario) || 0;
+      const numB = parseInt(b.numero_en_himnario) || 0;
+      if (numA !== numB) {
+        return numA - numB;
+      }
+      return a.id - b.id;
+    });
+
+    res.json(allSongs);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -546,12 +657,18 @@ app.get('/api/songs/:id', authenticateToken, (req, res) => {
   const songId = parseInt(req.params.id);
 
   try {
-    const prodSong = getProductionSong(songId);
-    if (!prodSong) return res.status(404).json({ error: 'Alabanza no encontrada' });
+    let prodSong = null;
+    if (songId >= 0) {
+      prodSong = getProductionSong(songId);
+    }
 
     // Check if there is an active draft
     const draftStmt = dbCms.prepare("SELECT * FROM draft_hymn WHERE cancion_id = ?");
     const draft = draftStmt.get(songId);
+
+    if (!prodSong && !draft) {
+      return res.status(404).json({ error: 'Alabanza no encontrada' });
+    }
 
     res.json({
       production: prodSong,
@@ -634,19 +751,80 @@ app.post('/api/drafts/:songId/approve', authenticateToken, requireAdmin, (req, r
     // Run catalog database updates in an exact transaction
     dbCatalog.exec("BEGIN TRANSACTION");
 
-    // 1. Update basic fields
-    const updateSongStmt = dbCatalog.prepare(`
-      UPDATE cancion
-      SET seccion_id = ?, tonalidad = ?, intro = ?, numero_en_himnario = ?
-      WHERE id = ?
-    `);
-    updateSongStmt.run(
-      songData.seccion_id,
-      songData.tonalidad,
-      songData.intro,
-      songData.numero_en_himnario,
-      songId
-    );
+    // 1. Resolve targetSongId by checking if a catalog entry already exists for (himnario_id, numero_en_himnario)
+    const existingSong = dbCatalog.prepare(`
+      SELECT id FROM cancion WHERE himnario_id = ? AND numero_en_himnario = ?
+    `).get(songData.himnario_id, songData.numero_en_himnario);
+
+    let targetSongId = songId;
+
+    if (existingSong) {
+      targetSongId = existingSong.id;
+      const updateSongStmt = dbCatalog.prepare(`
+        UPDATE cancion
+        SET himnario_id = ?, seccion_id = ?, tonalidad = ?, intro = ?, numero_en_himnario = ?
+        WHERE id = ?
+      `);
+      updateSongStmt.run(
+        songData.himnario_id,
+        songData.seccion_id || null,
+        songData.tonalidad || '',
+        songData.intro || '',
+        songData.numero_en_himnario,
+        targetSongId
+      );
+    } else if (songId < 0) {
+      // Calculate structured ID for primary hymnals if applicable
+      let customId = null;
+      const numInt = parseInt(songData.numero_en_himnario);
+      if (numInt > 0) {
+        if (songData.himnario_id === 1) customId = 100000 + numInt;
+        else if (songData.himnario_id === 2) customId = 200000 + numInt;
+      }
+
+      if (customId) {
+        const insertSongStmt = dbCatalog.prepare(`
+          INSERT INTO cancion (id, himnario_id, seccion_id, tonalidad, intro, numero_en_himnario)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `);
+        insertSongStmt.run(
+          customId,
+          songData.himnario_id,
+          songData.seccion_id || null,
+          songData.tonalidad || '',
+          songData.intro || '',
+          songData.numero_en_himnario
+        );
+        targetSongId = customId;
+      } else {
+        const insertSongStmt = dbCatalog.prepare(`
+          INSERT INTO cancion (himnario_id, seccion_id, tonalidad, intro, numero_en_himnario)
+          VALUES (?, ?, ?, ?, ?)
+        `);
+        const result = insertSongStmt.run(
+          songData.himnario_id,
+          songData.seccion_id || null,
+          songData.tonalidad || '',
+          songData.intro || '',
+          songData.numero_en_himnario
+        );
+        targetSongId = result.lastInsertRowid;
+      }
+    } else {
+      const updateSongStmt = dbCatalog.prepare(`
+        UPDATE cancion
+        SET himnario_id = ?, seccion_id = ?, tonalidad = ?, intro = ?, numero_en_himnario = ?
+        WHERE id = ?
+      `);
+      updateSongStmt.run(
+        songData.himnario_id,
+        songData.seccion_id || null,
+        songData.tonalidad || '',
+        songData.intro || '',
+        songData.numero_en_himnario,
+        songId
+      );
+    }
 
     // 2. Metadata (es / pt / en)
     for (const lang of ['es', 'pt', 'en']) {
@@ -657,7 +835,7 @@ app.post('/api/drafts/:songId/approve', authenticateToken, requireAdmin, (req, r
           VALUES (?, ?, ?, ?, ?, ?, ?)
         `);
         metaStmt.run(
-          songId,
+          targetSongId,
           lang,
           meta.titulo.trim(),
           (meta.autor || '').trim(),
@@ -669,45 +847,57 @@ app.post('/api/drafts/:songId/approve', authenticateToken, requireAdmin, (req, r
     }
 
     // 3. Extract stanzas from ChordPro chords (automatically sync)
-    dbCatalog.prepare("DELETE FROM estrofa WHERE cancion_id = ?").run(songId);
-    
-    // We process both languages to write to stanzas
-    for (const lang of ['es', 'pt', 'en']) {
-      const cifra = songData.cifras[lang];
-      if (cifra && cifra.contenido && cifra.contenido.trim()) {
-        // Strip out chords and bracket directives
-        let cleaned = cifra.contenido.replace(/\[[^\]]+\]/g, '');
-        cleaned = cleaned.replace(/\{[^\}]+\}/g, '');
+    // DEFENSIVE SAFEGUARD: Check if the payload actually contains ANY stanzas or ChordPro text before deleting existing stanzas!
+    const hasChordProContent = ['es', 'pt', 'en'].some(lang => {
+      const cifra = songData.cifras && songData.cifras[lang];
+      return cifra && cifra.contenido && cifra.contenido.trim();
+    });
 
-        const blocks = cleaned.split(/\n\s*\n/);
-        let order = 1;
-        for (let block of blocks) {
-          block = block.trim();
-          if (!block) continue;
+    const hasStanzaContent = (songData.estrofas || []).some(s => s.texto && s.texto.trim());
 
-          const lines = block.split('\n').map(l => l.trim()).filter(l => l);
-          if (lines.length === 0) continue;
+    if (hasChordProContent || hasStanzaContent) {
+      dbCatalog.prepare("DELETE FROM estrofa WHERE cancion_id = ?").run(targetSongId);
+      
+      // We process both languages to write to stanzas
+      for (const lang of ['es', 'pt', 'en']) {
+        const cifra = songData.cifras && songData.cifras[lang];
+        if (cifra && cifra.contenido && cifra.contenido.trim()) {
+          // Strip out chords and bracket directives
+          let cleaned = cifra.contenido.replace(/\[[^\]]+\]/g, '');
+          cleaned = cleaned.replace(/\{[^\}]+\}/g, '');
 
-          let tipo = 'estrofa';
+          const blocks = cleaned.split(/\n\s*\n/);
+          let order = 1;
+          for (let block of blocks) {
+            block = block.trim();
+            if (!block) continue;
 
-          const textLines = lines.join('\n');
-          dbCatalog.prepare(`
-            INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
-            VALUES (?, ?, ?, ?, ?, 1)
-          `).run(songId, lang, order++, tipo, textLines);
-        }
-      } else {
-        // If ChordPro is empty, fall back to whatever is defined in the stanzas tab editor
-        const stanzas = songData.estrofas || [];
-        stanzas.filter(s => s.idioma === lang).forEach(s => {
-          if (s.texto && s.texto.trim()) {
+            const lines = block.split('\n').map(l => l.trim()).filter(l => l);
+            if (lines.length === 0) continue;
+
+            let tipo = 'estrofa';
+
+            const textLines = lines.join('\n');
             dbCatalog.prepare(`
               INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
-              VALUES (?, ?, ?, ?, ?, ?)
-            `).run(songId, lang, s.orden, s.tipo, s.texto.trim(), s.repeticiones || 1);
+              VALUES (?, ?, ?, ?, ?, 1)
+            `).run(targetSongId, lang, order++, tipo, textLines);
           }
-        });
+        } else {
+          // If ChordPro is empty, fall back to whatever is defined in the stanzas tab editor
+          const stanzas = songData.estrofas || [];
+          stanzas.filter(s => s.idioma === lang).forEach(s => {
+            if (s.texto && s.texto.trim()) {
+              dbCatalog.prepare(`
+                INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
+                VALUES (?, ?, ?, ?, ?, ?)
+              `).run(targetSongId, lang, s.orden, s.tipo, s.texto.trim(), s.repeticiones || 1);
+            }
+          });
+        }
       }
+    } else {
+      console.log(`[SAFEGUARD] Preserving existing stanzas for songId=${targetSongId} because draft contained no new stanzas or ChordPro chords.`);
     }
 
     // 4. Update Chords (cifra)
@@ -719,7 +909,7 @@ app.post('/api/drafts/:songId/approve', authenticateToken, requireAdmin, (req, r
           INSERT OR REPLACE INTO cifra (cancion_id, idioma, contenido, tonalidad, capotraste, bpm)
           VALUES (?, ?, ?, ?, ?, ?)
         `).run(
-          songId,
+          targetSongId,
           lang,
           cifra.contenido.trim(),
           cifra.tonalidad || null,
@@ -727,20 +917,20 @@ app.post('/api/drafts/:songId/approve', authenticateToken, requireAdmin, (req, r
           bpm
         );
       } else {
-        dbCatalog.prepare("DELETE FROM cifra WHERE cancion_id = ? AND idioma = ?").run(songId, lang);
+        dbCatalog.prepare("DELETE FROM cifra WHERE cancion_id = ? AND idioma = ?").run(targetSongId, lang);
       }
     }
 
     // 5. Update Notes (nota) supporting historical context
-    dbCatalog.prepare("DELETE FROM nota WHERE cancion_id = ?").run(songId);
-    const notes = songData.notas || [];
+    dbCatalog.prepare("DELETE FROM nota WHERE cancion_id = ?").run(targetSongId);
+    const notes = songData.notes || songData.notas || [];
     notes.forEach(note => {
       if (note.texto || note.referencia) {
         dbCatalog.prepare(`
           INSERT INTO nota (cancion_id, tipo, marcador_numero, fragmento_letra, texto, referencia, versiculo_texto, autor)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
-          songId,
+          targetSongId,
           note.tipo,
           note.marcador_numero,
           note.fragmento_letra || '',
@@ -757,8 +947,8 @@ app.post('/api/drafts/:songId/approve', authenticateToken, requireAdmin, (req, r
     // Clean up draft record
     dbCms.prepare("DELETE FROM draft_hymn WHERE cancion_id = ?").run(songId);
 
-    logAudit(req.user.id, 'APPROVE', songId, `Borrador aprobado e integrado a producción.`);
-    res.json({ success: true });
+    logAudit(req.user.id, 'APPROVE', targetSongId, songId < 0 ? `Nueva canción aprobada e integrada a producción con ID ${targetSongId}.` : `Borrador aprobado e integrado a producción.`);
+    res.json({ success: true, targetSongId });
 
   } catch (err) {
     dbCatalog.exec("ROLLBACK");
@@ -1081,8 +1271,57 @@ app.get('/api/public/songs/:id', (req, res) => {
   }
 });
 
+// App Links / Universal Links Fallback Route
+app.get('/shared-list/:ownerUid/:listId', (req, res) => {
+  const { ownerUid, listId } = req.params;
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Lista Compartida - La Lira</title>
+      <style>
+        body { font-family: -apple-system, system-ui, sans-serif; text-align: center; padding: 40px 20px; background: #fafafa; }
+        h1 { color: #333; font-size: 24px; margin-bottom: 8px; }
+        p { color: #666; margin-bottom: 24px; }
+        .btn { display: inline-block; background: #3b82f6; color: white; padding: 14px 28px; border-radius: 30px; text-decoration: none; font-weight: bold; font-size: 16px; }
+      </style>
+      <script>
+        window.onload = function() {
+          // Intentar abrir la app nativa mediante custom scheme
+          window.location.href = 'la-lira://shared-list/${ownerUid}/${listId}';
+        };
+      </script>
+    </head>
+    <body>
+      <h1>Redirigiendo a La Lira...</h1>
+      <p>Si la aplicación no se abre automáticamente, toca el botón de abajo.</p>
+      <a href="la-lira://shared-list/${ownerUid}/${listId}" class="btn">Abrir Lista en la App</a>
+    </body>
+    </html>
+  `);
+});
+
 // Start Server
 const PORT = 8000;
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '127.0.0.1', () => {
   console.log(`Node.js REST API de La Lira CMS corriendo en puerto ${PORT}...`);
+});
+
+setInterval(() => {
+  // Keep-alive loop to prevent premature garbage collection of the event loop
+}, 60000);
+
+process.on('exit', (code) => {
+  console.log(`Process exit event triggered with code: ${code}`);
+  console.trace("Exit stack trace:");
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });

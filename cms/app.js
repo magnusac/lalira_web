@@ -222,6 +222,8 @@ function setupEventListeners() {
   submitApprovalBtn.addEventListener('click', () => saveDraftSong(true));
   approveBtn.addEventListener('click', approveDraftSong);
   rejectBtn.addEventListener('click', rejectDraftSong);
+  const deleteSongBtn = document.getElementById('delete-song-btn');
+  if (deleteSongBtn) deleteSongBtn.addEventListener('click', deleteSong);
 
   // Publish Database trigger
   publishBtn.addEventListener('click', triggerPublishAll);
@@ -288,6 +290,21 @@ function setupEventListeners() {
       if (!himnarioId || !numero || !titulo) {
         newSongError.textContent = "Todos los campos son obligatorios.";
         newSongError.classList.remove('hidden');
+        return;
+      }
+
+      // SAFEGUARD: Check if song already exists in state.songs for this himnarioId and numero
+      const existingSong = (state.songs || []).find(s => s.himnario_id === himnarioId && String(s.numero_en_himnario).trim() === String(numero).trim());
+      if (existingSong) {
+        const confirmOverwrite = confirm(
+          `⚠️ La alabanza N° ${numero} ya existe en este himnario ("${existingSong.titulo || 'Sin título'}").\n\n` +
+          `¿Deseas cargar la canción existente para editarla y sobrescribir sus datos?`
+        );
+        if (!confirmOverwrite) return;
+
+        newSongModal.classList.add('hidden');
+        showToast(`Cargando alabanza N° ${numero} para edición y sobrescritura...`);
+        await loadSong(existingSong.id);
         return;
       }
 
@@ -449,7 +466,15 @@ async function loadMetadata() {
       state.sections.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
 
     const inputSection = document.getElementById('input-section');
-    inputSection.innerHTML = state.sections.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
+    if (inputSection) {
+      inputSection.innerHTML = state.sections.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
+    }
+
+    const inputHymnary = document.getElementById('input-hymnary');
+    if (inputHymnary) {
+      inputHymnary.innerHTML = '<option value="">(Sin Colección / Huérfana)</option>' + 
+        state.hymnals.map(h => `<option value="${h.id}">${h.nombre} (${h.codigo})</option>`).join('');
+    }
 
     await loadVersionInfo();
   } catch (err) {
@@ -586,6 +611,10 @@ window.loadSong = async function(songId) {
     
     adminApprovalActions.classList.toggle('hidden', !(isAdmin && isPending));
     tabDiffLink.classList.toggle('hidden', !(isAdmin && state.activeDraft));
+    const deleteSongBtn = document.getElementById('delete-song-btn');
+    if (deleteSongBtn) {
+      deleteSongBtn.classList.toggle('hidden', !(isAdmin && state.currentSongId));
+    }
 
     // Inputs population
     document.getElementById('input-number').value = workingData.numero_en_himnario;
@@ -595,7 +624,6 @@ window.loadSong = async function(songId) {
 
     const inputHymnary = document.getElementById('input-hymnary');
     if (inputHymnary) {
-      inputHymnary.disabled = (songId >= 0);
       inputHymnary.value = workingData.himnario_id || "";
     }
 
@@ -948,9 +976,13 @@ async function saveDraftSong(submitForApproval = false) {
 
     // Translations Metadata
     for (const lang of ['es', 'pt', 'en']) {
+      const rawTitle = document.getElementById(`meta-${lang}-titulo`).value.trim();
+      const existingTitle = state.activeDraft?.data?.metadata?.[lang]?.titulo || state.currentSong?.metadata?.[lang]?.titulo || "";
+      const finalTitle = rawTitle || existingTitle || (lang === 'es' ? "Sin título" : "");
+
       workingData.metadata[lang] = {
         idioma: lang,
-        titulo: document.getElementById(`meta-${lang}-titulo`).value.trim(),
+        titulo: finalTitle,
         autor: document.getElementById(`meta-${lang}-autor`).value.trim(),
         compositor: document.getElementById(`meta-${lang}-compositor`).value.trim(),
         adaptador: document.getElementById(`meta-${lang}-adaptador`).value.trim(),
@@ -980,22 +1012,32 @@ async function saveDraftSong(submitForApproval = false) {
     // Stanzas (plain text stanzas editor)
     ['es', 'pt', 'en'].forEach(lang => {
       const container = document.getElementById(`container-stanzas-${lang}`);
-      const rows = container.querySelectorAll('.stanza-edit-item');
-      rows.forEach(row => {
-        const order = parseInt(row.querySelector('.stanza-order-input').value) || 1;
-        const tipo = row.querySelector('.stanza-type-select').value;
-        const texto = row.querySelector('.stanza-textarea').value.trim();
-        if (texto) {
-          workingData.estrofas.push({
-            orden: order,
-            tipo: tipo,
-            texto: texto,
-            repeticiones: 1,
-            idioma: lang
-          });
-        }
-      });
+      if (container) {
+        const rows = container.querySelectorAll('.stanza-edit-item');
+        rows.forEach(row => {
+          const order = parseInt(row.querySelector('.stanza-order-input').value) || 1;
+          const tipo = row.querySelector('.stanza-type-select').value;
+          const texto = row.querySelector('.stanza-textarea').value.trim();
+          if (texto) {
+            workingData.estrofas.push({
+              orden: order,
+              tipo: tipo,
+              texto: texto,
+              repeticiones: 1,
+              idioma: lang
+            });
+          }
+        });
+      }
     });
+
+    // SAFEGUARD: If no stanzas were read from the UI editor, fall back to existing draft/production stanzas
+    if (workingData.estrofas.length === 0) {
+      const existingStanzas = state.activeDraft?.data?.estrofas || state.currentSong?.estrofas || [];
+      if (existingStanzas.length > 0) {
+        workingData.estrofas = existingStanzas;
+      }
+    }
 
     // POST Save Draft
     let res = await fetch(`${API_BASE}/drafts/${state.currentSongId}`, {
@@ -1076,6 +1118,32 @@ async function rejectDraftSong() {
     await loadSong(state.currentSongId);
   } catch {
     showToast("Error al rechazar borrador.", true);
+  }
+}
+
+async function deleteSong() {
+  if (!state.currentSongId) return;
+  if (!confirm("¿ESTÁS SEGURO? Esta acción borrará la canción y todos sus datos asociados permanentemente de la base de datos de producción. ¡Esta acción no se puede deshacer!")) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/songs/${state.currentSongId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error);
+    }
+    
+    showToast("Canción eliminada exitosamente.");
+    state.currentSongId = null;
+    state.currentSong = null;
+    state.activeDraft = null;
+    document.getElementById('editor-panel').classList.add('hidden');
+    document.getElementById('empty-state').classList.remove('hidden');
+    await fetchSongs();
+  } catch (err) {
+    showToast(`Error al eliminar: ${err.message}`, true);
   }
 }
 
@@ -1223,9 +1291,13 @@ async function triggerPublishAll() {
 
     if (!res.ok) throw new Error(logData.error || "Publicación fallida");
 
-    publishStatusText.textContent = logData.uploaded_to_server 
-      ? "¡Publicación completa! Servidores web y app móviles actualizados."
-      : "Base de datos compilada y copiada localmente en assets/.";
+    if (logData.uploaded_to_server) {
+      publishStatusText.textContent = `¡Publicación completa! Servidores web y app móviles actualizados (v${logData.version}).`;
+      publishStatusText.style.color = 'var(--color-success)';
+    } else {
+      publishStatusText.textContent = `⚠️ Base de datos compilada localmente en assets/ (v${logData.version}). ATENCIÓN: No se subió al servidor remoto por falta de credenciales SSH. Sube los archivos manualmente si es necesario.`;
+      publishStatusText.style.color = '#f39c12';
+    }
 
     publishLog.textContent = JSON.stringify(logData, null, 2);
     publishLog.classList.remove('hidden');

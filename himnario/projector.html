@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Lira - Himnario</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body class="projector-mode" id="projector-body">
+  
+  <div id="projector-content" class="projector-lyrics">
+    <div style="opacity: 0.5; font-size: 2vw; font-weight: normal;">Esperando letras...</div>
+  </div>
+
+  <script>
+    // Listen for broadcast channel events from the control panel
+    const channel = new BroadcastChannel('lalira_projector');
+    
+    const contentDiv = document.getElementById('projector-content');
+    const body = document.getElementById('projector-body');
+    
+    channel.onmessage = (event) => {
+      const data = event.data;
+      
+      if (data.type === 'STANZA') {
+        // Re-trigger animation
+        contentDiv.style.animation = 'none';
+        contentDiv.offsetHeight; // trigger reflow
+        contentDiv.style.animation = null; 
+        
+        if (data.isBilingual && data.secondaryText) {
+          contentDiv.className = 'projector-lyrics bilingual';
+          contentDiv.innerHTML = `
+            <div class="lyric-lang-1">${data.text}</div>
+            <div class="lyric-lang-2">${data.secondaryText}</div>
+          `;
+        } else {
+          contentDiv.className = 'projector-lyrics';
+          contentDiv.textContent = data.text;
+        }
+      }
+      
+      if (data.type === 'CLEAR') {
+        contentDiv.innerHTML = '';
+      }
+      
+      if (data.type === 'BACKGROUND') {
+        if (data.bgType === 'color') {
+          body.style.backgroundImage = 'none';
+          body.style.backgroundColor = data.value;
+        } else if (data.bgType === 'image') {
+          body.style.backgroundImage = `url(${data.value})`;
+        }
+      }
+    };
+  </script>
+</body>
+</html>

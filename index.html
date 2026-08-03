@@ -51,16 +51,24 @@
   <section class="hero" id="hero">
     <div class="container">
       <div class="hero-content">
-        <div class="hero-tag" data-i18n="hero_tag">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-          </svg>
-          Disponible Pronto
-        </div>
         <h1 class="hero-title" data-i18n="hero_title">La Alabanza <br><span>en tus manos.</span></h1>
         <p class="hero-desc" data-i18n="hero_desc">Tus alabanzas favoritas, siempre contigo. Accede a letras y acordes sin conexión, organiza tus listas al instante y descarga partituras completas para instrumentos y voces en una interfaz simple y moderna.</p>
         
         <div class="hero-buttons">
+          <!-- Google Play Button -->
+          <a href="https://play.google.com/store/apps/details?id=com.lalira.hymnary" target="_blank" rel="noopener noreferrer" class="btn-store btn-store-light" id="hero-btn-playstore">
+            <svg class="btn-store-icon" viewBox="0 0 24 24">
+              <path fill="#00D2FF" d="M3.609 1.814L13.793 12 3.61 22.185A2.32 2.32 0 0 1 3 20.554V3.445c0-.649.23-1.242.609-1.631z"/>
+              <path fill="#00E676" d="M17.156 8.638L13.793 12 3.609 1.814a2.296 2.296 0 0 1 1.62-.663c.553 0 1.07.19 1.488.513l10.439 6.974z"/>
+              <path fill="#FF3D00" d="M17.156 15.362l-10.44 6.975A2.33 2.33 0 0 1 5.23 22.85a2.296 2.296 0 0 1-1.62-.664L13.793 12l3.363 3.362z"/>
+              <path fill="#FFD600" d="M20.686 10.871l-3.53-2.362L13.793 12l3.363 3.362 3.53-2.362c.792-.53 1.314-1.42 1.314-2.428s-.522-1.899-1.314-2.428z"/>
+            </svg>
+            <div class="btn-store-text">
+              <span data-i18n="download_google_play">Disponible en</span>
+              <span>Google Play</span>
+            </div>
+          </a>
+
           <!-- App Store Button -->
           <a href="#" class="btn-store" id="hero-btn-appstore">
             <svg class="btn-store-icon" viewBox="0 0 24 24">
@@ -69,17 +77,6 @@
             <div class="btn-store-text">
               <span data-i18n="download_app_store">Disponible pronto en</span>
               <span>App Store</span>
-            </div>
-          </a>
-
-          <!-- Google Play Button -->
-          <a href="#" class="btn-store" id="hero-btn-playstore">
-            <svg class="btn-store-icon" viewBox="0 0 24 24">
-              <path d="M5.25 3.06a3 3 0 0 0-1.25.5v16.88a3 3 0 0 0 1.25.5l9.28-9.44L5.25 3.06zM15.75 12l2.36 2.4 2.89-1.65a2.58 2.58 0 0 0 0-4.5l-2.89-1.65L15.75 12zm-1.89-1.92l4.89-4.98L5.94 3.75l7.92 6.33zm0 3.84L5.94 20.25l12.81-1.35-4.89-4.98z"/>
-            </svg>
-            <div class="btn-store-text">
-              <span data-i18n="download_google_play">Disponible pronto en</span>
-              <span>Google Play</span>
             </div>
           </a>
         </div>

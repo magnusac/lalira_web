@@ -16,7 +16,7 @@ const translations = {
     hero_title: "La Alabanza <br><span>en tus manos.</span>",
     hero_desc: "Tus alabanzas favoritas, siempre contigo. Accede a letras y acordes sin conexión, organiza tus listas al instante y descarga partituras completas para instrumentos y voces en una interfaz simple y moderna.",
     download_app_store: "Disponible pronto en",
-    download_google_play: "Disponible pronto en",
+    download_google_play: "Disponible en",
     scan_to_download: "Próximamente",
     scan_compatible: "Para dispositivos iOS y Android",
 
@@ -146,7 +146,7 @@ const translations = {
     hero_title: "O Louvor <br><span>em suas mãos.</span>",
     hero_desc: "Seus louvores favoritos, sempre com você. Acesse letras e acordes sem conexão, organize suas listas instantaneamente e baixe partituras completas para instrumentos e vozes em uma interface simples e moderna.",
     download_app_store: "Disponível em breve na",
-    download_google_play: "Disponível em breve no",
+    download_google_play: "Disponível no",
     scan_to_download: "Em Breve",
     scan_compatible: "Para dispositivos iOS e Android",
 

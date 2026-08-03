@@ -423,7 +423,7 @@ if ($path === '/songs' && $request_method === 'GET') {
                m.titulo, m.autor,
                EXISTS(SELECT 1 FROM cifra WHERE cancion_id = c.id AND contenido IS NOT NULL AND contenido != '') as has_chords
         FROM cancion c
-        JOIN himnario h ON c.himnario_id = h.id
+        LEFT JOIN himnario h ON c.himnario_id = h.id
         LEFT JOIN cancion_metadata m ON c.id = m.cancion_id AND m.idioma = 'es'
         WHERE 1=1
     ";
@@ -556,7 +556,7 @@ function getProductionSong($dbCatalog, $songId) {
     $stmt = $dbCatalog->prepare("
         SELECT c.id, c.himnario_id, c.seccion_id, c.numero_en_himnario, c.tonalidad, c.intro, h.codigo as himnario_codigo
         FROM cancion c
-        JOIN himnario h ON c.himnario_id = h.id
+        LEFT JOIN himnario h ON c.himnario_id = h.id
         WHERE c.id = ?
     ");
     $stmt->execute([$songId]);
@@ -762,36 +762,78 @@ if (preg_match('/^\/drafts\/(-?\d+)\/approve$/', $path, $matches) && $request_me
         $dbCatalog->beginTransaction();
         
         $targetSongId = $songId;
-        
-        if ($songId < 0) {
-            // Insert new song
-            $insertSongStmt = $dbCatalog->prepare("
-                INSERT INTO cancion (himnario_id, seccion_id, tonalidad, intro, numero_en_himnario)
-                VALUES (?, ?, ?, ?, ?)
-            ");
-            $insertSongStmt->execute([
-                $songData['himnario_id'],
-                $songData['seccion_id'],
-                $songData['tonalidad'],
-                $songData['intro'],
-                $songData['numero_en_himnario']
-            ]);
-            $targetSongId = (int)$dbCatalog->lastInsertId();
-        } else {
-            // Update existing song
+
+        if ($songId > 0) {
             $updateSongStmt = $dbCatalog->prepare("
                 UPDATE cancion
                 SET himnario_id = ?, seccion_id = ?, tonalidad = ?, intro = ?, numero_en_himnario = ?
                 WHERE id = ?
             ");
             $updateSongStmt->execute([
-                $songData['himnario_id'],
-                $songData['seccion_id'],
-                $songData['tonalidad'],
-                $songData['intro'],
+                empty($songData['himnario_id']) ? null : $songData['himnario_id'],
+                $songData['seccion_id'] ?? null,
+                $songData['tonalidad'] ?? '',
+                $songData['intro'] ?? '',
                 $songData['numero_en_himnario'],
-                $songId
+                $targetSongId
             ]);
+        } else {
+            $findSongStmt = $dbCatalog->prepare("SELECT id FROM cancion WHERE himnario_id = ? AND numero_en_himnario = ?");
+            $findSongStmt->execute([empty($songData['himnario_id']) ? null : $songData['himnario_id'], $songData['numero_en_himnario']]);
+            $existingSong = $findSongStmt->fetch();
+
+            if ($existingSong) {
+                $targetSongId = (int)$existingSong['id'];
+                $updateSongStmt = $dbCatalog->prepare("
+                    UPDATE cancion
+                    SET himnario_id = ?, seccion_id = ?, tonalidad = ?, intro = ?, numero_en_himnario = ?
+                    WHERE id = ?
+                ");
+                $updateSongStmt->execute([
+                    empty($songData['himnario_id']) ? null : $songData['himnario_id'],
+                    $songData['seccion_id'] ?? null,
+                    $songData['tonalidad'] ?? '',
+                    $songData['intro'] ?? '',
+                    $songData['numero_en_himnario'],
+                    $targetSongId
+                ]);
+            } else {
+                $customId = null;
+                $numInt = (int)$songData['numero_en_himnario'];
+                if ($numInt > 0) {
+                    if ((int)$songData['himnario_id'] === 1) $customId = 100000 + $numInt;
+                    else if ((int)$songData['himnario_id'] === 2) $customId = 200000 + $numInt;
+                }
+
+                if ($customId) {
+                    $insertSongStmt = $dbCatalog->prepare("
+                        INSERT INTO cancion (id, himnario_id, seccion_id, tonalidad, intro, numero_en_himnario)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ");
+                    $insertSongStmt->execute([
+                        $customId,
+                        empty($songData['himnario_id']) ? null : $songData['himnario_id'],
+                        $songData['seccion_id'] ?? null,
+                        $songData['tonalidad'] ?? '',
+                        $songData['intro'] ?? '',
+                        $songData['numero_en_himnario']
+                    ]);
+                    $targetSongId = $customId;
+                } else {
+                    $insertSongStmt = $dbCatalog->prepare("
+                        INSERT INTO cancion (himnario_id, seccion_id, tonalidad, intro, numero_en_himnario)
+                        VALUES (?, ?, ?, ?, ?)
+                    ");
+                    $insertSongStmt->execute([
+                        empty($songData['himnario_id']) ? null : $songData['himnario_id'],
+                        $songData['seccion_id'] ?? null,
+                        $songData['tonalidad'] ?? '',
+                        $songData['intro'] ?? '',
+                        $songData['numero_en_himnario']
+                    ]);
+                    $targetSongId = (int)$dbCatalog->lastInsertId();
+                }
+            }
         }
         
         foreach (['es', 'pt', 'en'] as $lang) {
@@ -813,17 +855,60 @@ if (preg_match('/^\/drafts\/(-?\d+)\/approve$/', $path, $matches) && $request_me
             }
         }
         
-        $delStanzas = $dbCatalog->prepare("DELETE FROM estrofa WHERE cancion_id = ?");
-        $delStanzas->execute([$targetSongId]);
-        
+        // DEFENSIVE SAFEGUARD: Check if the payload actually contains ANY stanzas or ChordPro text before deleting existing stanzas!
+        $hasChordProContent = false;
+        foreach (['es', 'pt', 'en'] as $lang) {
+            if (!empty($songData['cifras'][$lang]['contenido']) && trim($songData['cifras'][$lang]['contenido']) !== '') {
+                $hasChordProContent = true;
+                break;
+            }
+        }
+
+        $hasStanzaContent = false;
         $stanzas = $songData['estrofas'] ?? [];
         foreach ($stanzas as $s) {
             if (!empty($s['texto']) && trim($s['texto']) !== '') {
-                $insStanza = $dbCatalog->prepare("
-                    INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ");
-                $insStanza->execute([$targetSongId, $s['idioma'], $s['orden'], $s['tipo'], trim($s['texto']), $s['repeticiones'] ?? 1]);
+                $hasStanzaContent = true;
+                break;
+            }
+        }
+
+        if ($hasChordProContent || $hasStanzaContent) {
+            $delStanzas = $dbCatalog->prepare("DELETE FROM estrofa WHERE cancion_id = ?");
+            $delStanzas->execute([$targetSongId]);
+            
+            // We process both languages to write to stanzas
+            for ($langIdx = 0; $langIdx < count(['es', 'pt', 'en']); $langIdx++) {
+                $lang = ['es', 'pt', 'en'][$langIdx];
+                $cifra = $songData['cifras'][$lang] ?? null;
+                if ($cifra && !empty($cifra['contenido']) && trim($cifra['contenido']) !== '') {
+                    $cleaned = preg_replace('/\[[^\]]+\]/', '', $cifra['contenido']);
+                    $cleaned = preg_replace('/\{[^\}]+\}/', '', $cleaned);
+                    $blocks = preg_split('/\n\s*\n/', $cleaned);
+                    $order = 1;
+                    foreach ($blocks as $block) {
+                        $block = trim($block);
+                        if (!$block) continue;
+                        $lines = array_filter(array_map('trim', explode("\n", $block)));
+                        if (empty($lines)) continue;
+                        $textLines = implode("\n", $lines);
+                        $insStanza = $dbCatalog->prepare("
+                            INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
+                            VALUES (?, ?, ?, ?, ?, 1)
+                        ");
+                        $insStanza->execute([$targetSongId, $lang, $order++, 'estrofa', $textLines]);
+                    }
+                } else {
+                    foreach ($stanzas as $s) {
+                        if (($s['idioma'] ?? 'es') === $lang && !empty($s['texto']) && trim($s['texto']) !== '') {
+                            $insStanza = $dbCatalog->prepare("
+                                INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            ");
+                            $insStanza->execute([$targetSongId, $lang, $s['orden'], $s['tipo'], trim($s['texto']), $s['repeticiones'] ?? 1]);
+                        }
+                    }
+                }
             }
         }
         
@@ -989,6 +1074,35 @@ if (preg_match('/^\/users\/(\d+)$/', $path, $matches) && $request_method === 'PU
     
     log_audit($dbCms, $user['id'], 'UPDATE_USER', $userId, "Usuario modificado. Rol: " . ($rol ?? 'sin cambios') . ", Estado: " . ($estado ?? 'sin cambios') . ", Proveedor: " . ($auth_provider ?? 'sin cambios'));
     json_response(["success" => true]);
+}
+
+// DELETE /songs/:id
+if (preg_match('/^\/songs\/(\d+)$/', $path, $matches) && $request_method === 'DELETE') {
+    $user = require_auth();
+    require_admin($user);
+    $songId = (int)$matches[1];
+
+    try {
+        $dbCatalog->beginTransaction();
+        
+        $dbCatalog->prepare("DELETE FROM estrofa WHERE cancion_id = ?")->execute([$songId]);
+        $dbCatalog->prepare("DELETE FROM cifra WHERE cancion_id = ?")->execute([$songId]);
+        $dbCatalog->prepare("DELETE FROM nota WHERE cancion_id = ?")->execute([$songId]);
+        $dbCatalog->prepare("DELETE FROM cancion_metadata WHERE cancion_id = ?")->execute([$songId]);
+        $dbCatalog->prepare("DELETE FROM cancion WHERE id = ?")->execute([$songId]);
+        
+        $dbCatalog->commit();
+        
+        // Also delete any pending draft in CMS DB
+        $dbCms->prepare("DELETE FROM draft_hymn WHERE cancion_id = ?")->execute([$songId]);
+        
+        log_audit($dbCms, $user['id'], 'DELETE_SONG', $songId, "Canción ID {$songId} eliminada permanentemente del catálogo.");
+        
+        json_response(["success" => true]);
+    } catch (Exception $e) {
+        $dbCatalog->rollBack();
+        json_response(["error" => $e->getMessage()], 500);
+    }
 }
 
 // DELETE /users/:id
