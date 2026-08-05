@@ -72,6 +72,19 @@ if (file_exists($env_file)) {
 // Determine if running on production host or local dev machine fallback
 $is_prod = str_contains(__DIR__, '/home3/magnusal/') || file_exists('/home3/magnusal/public_html/lalira');
 
+if ($is_prod) {
+    $assets_dir = dirname(__DIR__) . '/assets';
+    if (is_dir($assets_dir)) {
+        @chmod($assets_dir, 0755);
+        $files = glob($assets_dir . '/*');
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                @chmod($file, 0644);
+            }
+        }
+    }
+}
+
 $headers = getallheaders();
 $db_version = $headers['X-DB-Version'] ?? '2';
 
