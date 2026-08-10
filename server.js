@@ -1280,7 +1280,27 @@ app.get('/shared-list/:ownerUid/:listId', (req, res) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Lista Compartida - La Lira</title>
+      <title>Lista Compartida - La Lira App</title>
+      <meta name="description" content="Abre esta lista de alabanzas compartida en La Lira App.">
+
+      <!-- Open Graph / WhatsApp / Facebook -->
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="https://lalira.app/shared-list/${ownerUid}/${listId}">
+      <meta property="og:site_name" content="La Lira App">
+      <meta property="og:title" content="Lista Compartida - La Lira App">
+      <meta property="og:description" content="Abre esta lista de alabanzas compartida en La Lira App.">
+      <meta property="og:image" content="https://lalira.app/assets/og_preview.png">
+      <meta property="og:image:secure_url" content="https://lalira.app/assets/og_preview.png">
+      <meta property="og:image:type" content="image/png">
+      <meta property="og:image:width" content="1200">
+      <meta property="og:image:height" content="630">
+
+      <!-- Twitter Cards -->
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:title" content="Lista Compartida - La Lira App">
+      <meta name="twitter:description" content="Abre esta lista de alabanzas compartida en La Lira App.">
+      <meta name="twitter:image" content="https://lalira.app/assets/og_preview.png">
+
       <style>
         body { font-family: -apple-system, system-ui, sans-serif; text-align: center; padding: 40px 20px; background: #fafafa; }
         h1 { color: #333; font-size: 24px; margin-bottom: 8px; }

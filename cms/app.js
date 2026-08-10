@@ -225,6 +225,72 @@ function setupEventListeners() {
   const deleteSongBtn = document.getElementById('delete-song-btn');
   if (deleteSongBtn) deleteSongBtn.addEventListener('click', deleteSong);
 
+  // Mobile Back Button & Floating Save/Submit Actions
+  const mobileBackBtn = document.getElementById('mobile-back-btn');
+  if (mobileBackBtn) {
+    mobileBackBtn.addEventListener('click', showMobileSidebar);
+  }
+
+  const mobileSaveDraftBtn = document.getElementById('mobile-save-draft-btn');
+  if (mobileSaveDraftBtn) {
+    mobileSaveDraftBtn.addEventListener('click', () => saveDraftSong(false));
+  }
+
+  const mobileSubmitApprovalBtn = document.getElementById('mobile-submit-approval-btn');
+  if (mobileSubmitApprovalBtn) {
+    mobileSubmitApprovalBtn.addEventListener('click', () => saveDraftSong(true));
+  }
+
+  // Segmented View Toggle (Editor vs Preview on mobile)
+  const btnShowEditor = document.getElementById('btn-show-editor');
+  const btnShowPreview = document.getElementById('btn-show-preview');
+  const paneChordEditor = document.getElementById('pane-chord-editor');
+  const paneChordPreview = document.getElementById('pane-chord-preview');
+
+  if (btnShowEditor && btnShowPreview && paneChordEditor && paneChordPreview) {
+    btnShowEditor.addEventListener('click', () => {
+      btnShowEditor.classList.add('active');
+      btnShowPreview.classList.remove('active');
+      paneChordEditor.classList.remove('hidden-mobile');
+      paneChordPreview.classList.add('hidden-mobile');
+    });
+
+    btnShowPreview.addEventListener('click', () => {
+      btnShowPreview.classList.add('active');
+      btnShowEditor.classList.remove('active');
+      paneChordPreview.classList.remove('hidden-mobile');
+      paneChordEditor.classList.add('hidden-mobile');
+      renderChordProPreview();
+    });
+  }
+
+  // Chord Assistant Toolbar Event Listeners
+  document.querySelectorAll('.chord-chip').forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      e.preventDefault();
+      const chordVal = chip.getAttribute('data-chord');
+      if (chordVal) {
+        insertChordOrModifier(chordVal);
+      }
+    });
+  });
+
+  const btnMarkIntro = document.getElementById('btn-mark-intro');
+  if (btnMarkIntro) {
+    btnMarkIntro.addEventListener('click', (e) => {
+      e.preventDefault();
+      markSelectionAsIntro();
+    });
+  }
+
+  const btnAddFootnote = document.getElementById('btn-add-footnote');
+  if (btnAddFootnote) {
+    btnAddFootnote.addEventListener('click', (e) => {
+      e.preventDefault();
+      addSelectionToFootnote();
+    });
+  }
+
   // Publish Database trigger
   publishBtn.addEventListener('click', triggerPublishAll);
   closePublishModal.addEventListener('click', () => {
@@ -548,9 +614,26 @@ function renderSongsList() {
   }).join('');
 }
 
+function showMobileWorkspace() {
+  const container = document.getElementById('app-container');
+  if (container) {
+    container.classList.add('show-workspace');
+    container.classList.remove('show-sidebar');
+  }
+}
+
+function showMobileSidebar() {
+  const container = document.getElementById('app-container');
+  if (container) {
+    container.classList.add('show-sidebar');
+    container.classList.remove('show-workspace');
+  }
+}
+
 // Load Song Detail
 window.loadSong = async function(songId) {
   try {
+    showMobileWorkspace();
     const items = document.querySelectorAll('.song-item');
     items.forEach(item => item.classList.remove('active'));
 
@@ -678,12 +761,102 @@ function switchCifraLang(lang) {
   renderChordProPreview();
 }
 
+// --- Chord Assistant Helpers ---
+
+function insertChordOrModifier(val) {
+  const textarea = document.getElementById('chordpro-textarea');
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+
+  if (start !== end) {
+    // Text selected -> wrap in [...]
+    const selectedText = text.substring(start, end);
+    const replacement = `[${val}${selectedText}]`;
+    textarea.setRangeText(replacement, start, end, 'end');
+  } else {
+    // Check if cursor is currently inside [...]
+    const before = text.substring(0, start);
+    const after = text.substring(start);
+    const lastOpen = before.lastIndexOf('[');
+    const lastClose = before.lastIndexOf(']');
+
+    if (lastOpen > lastClose && !after.startsWith(']')) {
+      // Inside brackets -> append modifier directly inside brackets
+      textarea.setRangeText(val, start, end, 'end');
+    } else {
+      // Outside brackets -> wrap in mandatory brackets [val]
+      const insertion = `[${val}]`;
+      textarea.setRangeText(insertion, start, end, 'end');
+    }
+  }
+
+  textarea.focus();
+  textarea.dispatchEvent(new Event('input'));
+}
+
+function markSelectionAsIntro() {
+  const textarea = document.getElementById('chordpro-textarea');
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+
+  if (start !== end) {
+    const selectedText = text.substring(start, end);
+    const wrapped = `{start_of_intro}\n${selectedText}\n{end_of_intro}`;
+    textarea.setRangeText(wrapped, start, end, 'end');
+  } else {
+    const insertion = `{start_of_intro}\n{end_of_intro}`;
+    textarea.setRangeText(insertion, start, end, 'end');
+  }
+
+  textarea.focus();
+  textarea.dispatchEvent(new Event('input'));
+}
+
+function addSelectionToFootnote() {
+  const textarea = document.getElementById('chordpro-textarea');
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  let selectedText = textarea.value.substring(start, end).trim();
+
+  // Clean out any [chords] from selection
+  selectedText = selectedText.replace(/\[[^\]]+\]/g, '').trim();
+
+  if (!selectedText) {
+    showToast("Selecciona primero un fragmento de texto en el editor.", true);
+    return;
+  }
+
+  document.getElementById('note-input-fragment').value = selectedText;
+
+  // Switch to Tab 4
+  const tabNotesLink = Array.from(tabLinks).find(l => l.getAttribute('data-tab') === 'tab-notes');
+  if (tabNotesLink) tabNotesLink.click();
+
+  showToast(`Fragmento "${selectedText.length > 25 ? selectedText.substring(0, 25) + '...' : selectedText}" copiado a la nota.`);
+}
+
 // --- ChordPro Line Parser & Renderer ---
 
 function parseChordProLine(line) {
   const regex = /\[([^\]]+)\]/g;
   let match;
   const tokens = [];
+  const trimmed = line.trim().toLowerCase();
+
+  if (trimmed === '{start_of_intro}' || trimmed === '{intro}') {
+    return { type: 'intro_start' };
+  }
+  if (trimmed === '{end_of_intro}' || trimmed === '{/intro}') {
+    return { type: 'intro_end' };
+  }
 
   if (line.startsWith('{') && line.endsWith('}')) {
     return { type: 'directive', text: line };
@@ -762,11 +935,22 @@ function renderChordProPreview() {
 
   const lines = text.split('\n');
   let html = '';
+  let inIntroBlock = false;
 
   for (let line of lines) {
     const parsed = parseChordProLine(line);
 
-    if (parsed.type === 'empty') {
+    if (parsed.type === 'intro_start') {
+      if (!inIntroBlock) {
+        html += '<div class="preview-intro-container"><div class="preview-intro-badge">Intro</div>';
+        inIntroBlock = true;
+      }
+    } else if (parsed.type === 'intro_end') {
+      if (inIntroBlock) {
+        html += '</div>';
+        inIntroBlock = false;
+      }
+    } else if (parsed.type === 'empty') {
       html += '<div class="preview-empty"></div>';
     } else if (parsed.type === 'header') {
       html += `<div class="preview-header">${parsed.text}</div>`;
@@ -785,6 +969,10 @@ function renderChordProPreview() {
       }
       html += '</div>';
     }
+  }
+
+  if (inIntroBlock) {
+    html += '</div>';
   }
 
   previewContainer.innerHTML = html;
@@ -1458,6 +1646,7 @@ async function handleUserFormSubmit(e) {
 
 // --- Dashboard Logic ---
 window.showDashboard = function() {
+  showMobileWorkspace();
   // Clear selected song reference
   state.currentSong = null;
   state.activeDraft = null;

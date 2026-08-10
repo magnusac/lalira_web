@@ -1,0 +1,120 @@
+{
+  "tabs": {
+    "home": "Início",
+    "hymnary": "Coletânea",
+    "lists": "Listas",
+    "more": "Mais"
+  },
+  "home": {
+    "hymn_of_day": "HINO DO DIA",
+    "chorus": "Coro",
+    "final": "Final",
+    "tap_to_see_more": "Ver mais...",
+    "no_hymns_yet": "Nenhum hino importado ainda.",
+    "recent_lists": "LISTAS RECENTES",
+    "recent_hymns": "LOUVORES RECENTES"
+  },
+  "browse": {
+    "search_placeholder": "Pesquisar por número ou letra...",
+    "numeric_index": "Índice Numérico",
+    "alpha_index": "A - Z"
+  },
+  "lists": {
+    "new_list": "Nova Lista",
+    "list_name_placeholder": "Nome da lista",
+    "search_placeholder": "Pesquisar nome da lista...",
+    "create": "Criar",
+    "rename_list": "Renomear Lista",
+    "save": "Salvar",
+    "empty_list": "Lista vazia",
+    "add_hymns": "Adicionar Hinos",
+    "create_new_list": "Criar nova lista",
+    "no_lists_yet": "Nenhuma lista criada ainda."
+  },
+  "search": {
+    "placeholder": "Pesquisar por número ou letra...",
+    "collection": "Coletânea",
+    "category": "Categoria",
+    "rhythm": "Ritmo",
+    "bpm": "BPM",
+    "note": "Nota",
+    "tiempo": "Compasso",
+    "no_results": "Nenhum hino encontrado para",
+    "start_typing": "Escreva para procurar...",
+    "select_collection": "Selecionar Coletânea",
+    "select_category": "Selecionar Categoria",
+    "select_rhythm": "Selecionar Ritmo",
+    "select_bpm": "Selecionar BPM",
+    "select_note": "Selecionar Nota",
+    "select_tiempo": "Selecionar Compasso",
+    "close": "Fechar"
+  },
+  "settings": {
+    "title": "Configurações",
+    "app_name": "La Lira",
+    "sections": {
+      "appearance": "Geral",
+      "chords": "Ajustes de visualização",
+      "general": "Geral",
+      "info": "Informação"
+    },
+    "reading_mode": "Tema do aplicativo",
+    "font_size": "Tamanho da fonte",
+    "language": "Idioma",
+    "about": "Sobre La Lira",
+    "about_content": "Desde os tempos bíblicos, a música tem sido um instrumento precioso para alcançar a graça de Deus através do louvor. Davi, em seus inícios como pastor, encontrou na lira não apenas um instrumento, mas uma linguagem de adoração e uma fonte de alívio. Através de suas cordas, a paz de Deus descia para consolar a alma atribulada e glorificar ao Criador.\n\nInspirada nesse mesmo espírito, La Lira foi desenhada para facilitar o acesso a um amplo catálogo de louvores e corinhos. Seu propósito fundamental é prover uma plataforma ágil e simples para a leitura e o estudo do patrimônio musical cristão.\n\nNossa missão é promover a edificação pessoal através do louvor, permitindo que cada usuário possa levar consigo este recurso de glorificação. Com um foco na simplicidade e na utilidade prática, oferecemos ferramentas para a organização e o preparo de louvores para o momento de adoração.\n\nBuscamos constantemente melhorar a experiência de leitura e navegação, assegurando que a tecnologia seja uma ponte eficaz para conectar o usuário com o conteúdo espiritual de cada composição.",
+    "contact": "Contato técnico",
+    "terms": "Termos e condições",
+    "privacy": "Política de Privacidade",
+    "select_language": "Selecionar Idioma",
+    "choose_language": "Escolha o idioma preferido:",
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "copyright": "© 2026 La Lira App",
+    "tagline": "O Louvor em suas mãos",
+    "version": "Versão",
+    "catalog_version": "Catálogo:",
+    "catalog_bundled": "incluído no app",
+    "chord_mode": "Modo de leitura",
+    "chord_mode_labels": {
+      "normal": "Letras",
+      "cifrado": "Cifras"
+    },
+    "simplify_chords": "Simplificar acordes",
+    "notation_type": "Notação",
+    "notation_labels": {
+      "american": "Americana",
+      "latin": "Tradicional"
+    },
+    "yes": "Sim",
+    "no": "Não",
+    "font_labels": {
+      "normal": "Pequena",
+      "large": "Normal",
+      "huge": "Grande",
+      "extra": "Muito Grande"
+    },
+    "theme_labels": {
+      "system": "Sistema",
+      "light": "Clara",
+      "dark": "Escura"
+    }
+  },
+  "hymn": {
+    "intro": "Introdução",
+    "chorus": "Coro",
+    "final": "Final",
+    "instrumental": "Instrumentos",
+    "key": "Tom",
+    "share": "Compartilhar",
+    "chord_mode_on": "C# Cifras",
+    "chord_mode_off": "≡ Letra",
+    "no_chords": "Cifras não disponíveis para este hino",
+    "transpose_down": "-1/2 tom",
+    "transpose_up": "+1/2 tom",
+    "restore": "Restaurar"
+  },
+  "common": {
+    "loading": "Carregando..."
+  }
+}

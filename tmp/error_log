@@ -1,0 +1,61 @@
+[08-Jun-2026 10:21:33 America/Santiago] PHP Warning:  copy(/home3/magnusal/lalira/assets/catalogo.sqlite): Failed to open stream: No such file or directory in /home3/magnusal/public_html/lalira/api/index.php on line 964
+[08-Jun-2026 10:49:07 America/Santiago] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1 no such column: capotraste in /home3/magnusal/public_html/lalira/api/index.php:526
+Stack trace:
+#0 /home3/magnusal/public_html/lalira/api/index.php(526): PDO->prepare('SELECT idioma, ...')
+#1 /home3/magnusal/public_html/lalira/api/index.php(554): getProductionSong(Object(PDO), 100000)
+#2 {main}
+  thrown in /home3/magnusal/public_html/lalira/api/index.php on line 526
+[08-Jun-2026 10:49:09 America/Santiago] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1 no such column: capotraste in /home3/magnusal/public_html/lalira/api/index.php:526
+Stack trace:
+#0 /home3/magnusal/public_html/lalira/api/index.php(526): PDO->prepare('SELECT idioma, ...')
+#1 /home3/magnusal/public_html/lalira/api/index.php(554): getProductionSong(Object(PDO), 100000)
+#2 {main}
+  thrown in /home3/magnusal/public_html/lalira/api/index.php on line 526
+[08-Jun-2026 10:49:11 America/Santiago] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1 no such column: capotraste in /home3/magnusal/public_html/lalira/api/index.php:526
+Stack trace:
+#0 /home3/magnusal/public_html/lalira/api/index.php(526): PDO->prepare('SELECT idioma, ...')
+#1 /home3/magnusal/public_html/lalira/api/index.php(554): getProductionSong(Object(PDO), 100001)
+#2 {main}
+  thrown in /home3/magnusal/public_html/lalira/api/index.php on line 526
+[08-Jun-2026 10:49:18 America/Santiago] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1 no such column: capotraste in /home3/magnusal/public_html/lalira/api/index.php:526
+Stack trace:
+#0 /home3/magnusal/public_html/lalira/api/index.php(526): PDO->prepare('SELECT idioma, ...')
+#1 /home3/magnusal/public_html/lalira/api/index.php(554): getProductionSong(Object(PDO), 100021)
+#2 {main}
+  thrown in /home3/magnusal/public_html/lalira/api/index.php on line 526
+[08-Jun-2026 10:49:31 America/Santiago] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1 no such column: capotraste in /home3/magnusal/public_html/lalira/api/index.php:526
+Stack trace:
+#0 /home3/magnusal/public_html/lalira/api/index.php(526): PDO->prepare('SELECT idioma, ...')
+#1 /home3/magnusal/public_html/lalira/api/index.php(554): getProductionSong(Object(PDO), 100000)
+#2 {main}
+  thrown in /home3/magnusal/public_html/lalira/api/index.php on line 526
+[08-Jun-2026 10:49:40 America/Santiago] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1 no such column: capotraste in /home3/magnusal/public_html/lalira/api/index.php:526
+Stack trace:
+#0 /home3/magnusal/public_html/lalira/api/index.php(526): PDO->prepare('SELECT idioma, ...')
+#1 /home3/magnusal/public_html/lalira/api/index.php(554): getProductionSong(Object(PDO), 100000)
+#2 {main}
+  thrown in /home3/magnusal/public_html/lalira/api/index.php on line 526
+[08-Jun-2026 10:50:08 America/Santiago] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1 no such column: capotraste in /home3/magnusal/public_html/lalira/api/index.php:526
+Stack trace:
+#0 /home3/magnusal/public_html/lalira/api/index.php(526): PDO->prepare('SELECT idioma, ...')
+#1 /home3/magnusal/public_html/lalira/api/index.php(554): getProductionSong(Object(PDO), 100000)
+#2 {main}
+  thrown in /home3/magnusal/public_html/lalira/api/index.php on line 526
+[08-Jun-2026 10:52:54 America/Santiago] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1 no such column: capotraste in /home3/magnusal/public_html/lalira/api/index.php:526
+Stack trace:
+#0 /home3/magnusal/public_html/lalira/api/index.php(526): PDO->prepare('SELECT idioma, ...')
+#1 /home3/magnusal/public_html/lalira/api/index.php(554): getProductionSong(Object(PDO), 100000)
+#2 {main}
+  thrown in /home3/magnusal/public_html/lalira/api/index.php on line 526
+[08-Jun-2026 10:52:59 America/Santiago] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1 no such column: capotraste in /home3/magnusal/public_html/lalira/api/index.php:526
+Stack trace:
+#0 /home3/magnusal/public_html/lalira/api/index.php(526): PDO->prepare('SELECT idioma, ...')
+#1 /home3/magnusal/public_html/lalira/api/index.php(554): getProductionSong(Object(PDO), 100021)
+#2 {main}
+  thrown in /home3/magnusal/public_html/lalira/api/index.php on line 526
+[08-Jun-2026 10:53:21 America/Santiago] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1 no such column: capotraste in /home3/magnusal/public_html/lalira/api/index.php:526
+Stack trace:
+#0 /home3/magnusal/public_html/lalira/api/index.php(526): PDO->prepare('SELECT idioma, ...')
+#1 /home3/magnusal/public_html/lalira/api/index.php(554): getProductionSong(Object(PDO), 100000)
+#2 {main}
+  thrown in /home3/magnusal/public_html/lalira/api/index.php on line 526

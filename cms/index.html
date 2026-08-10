@@ -217,6 +217,10 @@
       <!-- Editor Panel -->
       <div id="editor-panel" class="editor-panel hidden">
         <div class="editor-header">
+          <button id="mobile-back-btn" class="btn btn-secondary btn-sm mobile-back-btn" title="Volver al menú">
+            ← Volver
+          </button>
+
           <div class="song-title-group">
             <span class="song-hymnary-tag" id="hymnary-badge">P</span>
             <div class="song-title-inputs">
@@ -275,8 +279,14 @@
 
           <!-- Tab 1: ChordPro Editor -->
           <div id="tab-chordpro" class="tab-content active">
+            <!-- Mobile View Segmented Toggle -->
+            <div class="segmented-control mobile-only" id="chordpro-mobile-view-toggle">
+              <button class="segmented-btn active" id="btn-show-editor">✏️ Editor</button>
+              <button class="segmented-btn" id="btn-show-preview">👁️ Previsualización</button>
+            </div>
+
             <div class="chordpro-editor-layout">
-              <div class="editor-pane-chords">
+              <div class="editor-pane-chords" id="pane-chord-editor">
                 <div class="pane-header">
                   <h3>ChordPro Editor</h3>
                   <div class="lang-selector-mini">
@@ -285,6 +295,7 @@
                     <button class="mini-lang-btn" id="cifra-lang-en">EN</button>
                   </div>
                 </div>
+
                 <div class="form-row" style="margin-bottom: 12px;">
                   <div class="form-group half">
                     <label for="cifra-key">Tono Cifra</label>
@@ -303,7 +314,50 @@
                     <input type="text" id="cifra-ritmo" placeholder="Ej: Balada, Pop">
                   </div>
                 </div>
+
+                <!-- Comprehensive Chord Assistant Toolbar -->
+                <div class="chord-assistant-toolbar" id="chord-assistant-toolbar">
+                  <div class="toolbar-row toolbar-roots">
+                    <span class="toolbar-label">Notas:</span>
+                    <button type="button" class="chord-chip root-chip" data-chord="C">C</button>
+                    <button type="button" class="chord-chip root-chip" data-chord="D">D</button>
+                    <button type="button" class="chord-chip root-chip" data-chord="E">E</button>
+                    <button type="button" class="chord-chip root-chip" data-chord="F">F</button>
+                    <button type="button" class="chord-chip root-chip" data-chord="G">G</button>
+                    <button type="button" class="chord-chip root-chip" data-chord="A">A</button>
+                    <button type="button" class="chord-chip root-chip" data-chord="B">B</button>
+                    <button type="button" class="chord-chip accidental-chip" data-chord="#">#</button>
+                    <button type="button" class="chord-chip accidental-chip" data-chord="b">b</button>
+                    <button type="button" class="chord-chip slash-chip" data-chord="/">/</button>
+                  </div>
+                  <div class="toolbar-row toolbar-modifiers">
+                    <span class="toolbar-label">Variaciones:</span>
+                    <button type="button" class="chord-chip mod-chip" data-chord="m">m</button>
+                    <button type="button" class="chord-chip mod-chip" data-chord="7">7</button>
+                    <button type="button" class="chord-chip mod-chip" data-chord="maj7">maj7</button>
+                    <button type="button" class="chord-chip mod-chip" data-chord="sus2">sus2</button>
+                    <button type="button" class="chord-chip mod-chip" data-chord="sus4">sus4</button>
+                    <button type="button" class="chord-chip mod-chip" data-chord="add9">add9</button>
+                    <button type="button" class="chord-chip mod-chip" data-chord="dim">dim</button>
+                    <button type="button" class="chord-chip mod-chip" data-chord="aug">aug</button>
+                    <button type="button" class="chord-chip mod-chip" data-chord="5">5</button>
+                    <button type="button" class="chord-chip mod-chip" data-chord="6">6</button>
+                    <button type="button" class="chord-chip mod-chip" data-chord="9">9</button>
+                    <button type="button" class="chord-chip mod-chip" data-chord="11">11</button>
+                    <button type="button" class="chord-chip mod-chip" data-chord="13">13</button>
+                  </div>
+                  <div class="toolbar-row toolbar-actions">
+                    <button type="button" class="btn btn-sm btn-secondary tool-action-btn" id="btn-mark-intro" title="Envolver selección con {start_of_intro} y {end_of_intro}">
+                      ✨ Marcar Intro
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary tool-action-btn" id="btn-add-footnote" title="Copiar selección como fragmento para nota de referencia">
+                      📌 Añadir Nota a Selección
+                    </button>
+                  </div>
+                </div>
+
                 <textarea id="chordpro-textarea" placeholder="Escribe el texto ChordPro aquí...&#10;Ejemplo:&#10;[F]En esta [C]hora de clamor"></textarea>
+
                 <div class="editor-actions-footer">
                   <span style="font-size:0.75rem; color:var(--color-text-muted); margin-right:auto; align-self:center;">
                     Las estrofas se extraerán automáticamente de los acordes al guardar/aprobar.
@@ -311,7 +365,7 @@
                 </div>
               </div>
 
-              <div class="preview-pane-chords">
+              <div class="preview-pane-chords" id="pane-chord-preview">
                 <div class="pane-header">
                   <h3>Previsualización de App (Modo Cifrado)</h3>
                 </div>
@@ -545,6 +599,12 @@
             </div>
           </div>
 
+        </div>
+        
+        <!-- Mobile Sticky Bottom Action Bar -->
+        <div class="mobile-floating-actions mobile-only" id="mobile-floating-actions">
+          <button id="mobile-save-draft-btn" class="btn btn-secondary btn-sm">💾 Guardar</button>
+          <button id="mobile-submit-approval-btn" class="btn btn-primary btn-sm">🚀 Enviar</button>
         </div>
       </div>
     </main>

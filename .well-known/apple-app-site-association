@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "com.lalira.hymnary",
+        "paths": [
+          "/shared-list/*",
+          "/hymn/*"
+        ]
+      }
+    ]
+  }
+}

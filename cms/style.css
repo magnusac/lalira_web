@@ -1789,3 +1789,355 @@ input:focus, select:focus, textarea:focus {
   border-radius: 3px;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   CHORD ASSISTANT TOOLBAR STYLES
+   ───────────────────────────────────────────────────────────── */
+.chord-assistant-toolbar {
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.toolbar-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  min-width: 75px;
+}
+
+.chord-chip {
+  background: #ffffff;
+  border: 1px solid var(--border-glass);
+  color: var(--color-text-bright);
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.chord-chip:hover, .chord-chip:active {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.root-chip {
+  background: hsla(205, 85%, 45%, 0.08);
+  color: var(--color-translator);
+  border-color: hsla(205, 85%, 45%, 0.2);
+}
+
+.root-chip:hover {
+  background: var(--color-translator);
+  color: #ffffff;
+}
+
+.accidental-chip, .slash-chip {
+  background: hsla(40, 95%, 40%, 0.1);
+  color: var(--color-biblical);
+  border-color: hsla(40, 95%, 40%, 0.2);
+}
+
+.accidental-chip:hover, .slash-chip:hover {
+  background: var(--color-biblical);
+  color: #000000;
+}
+
+.mod-chip {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.tool-action-btn {
+  font-size: 0.78rem;
+  padding: 5px 12px;
+  border-radius: 6px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CHORDPRO INTRO PREVIEW STYLES
+   ───────────────────────────────────────────────────────────── */
+.preview-intro-container {
+  border-left: 3px solid var(--color-biblical);
+  background: hsla(40, 95%, 55%, 0.05);
+  padding: 10px 14px;
+  margin: 10px 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  position: relative;
+}
+
+.preview-intro-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--color-biblical);
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RESPONSIVE & MOBILE UTILITIES
+   ───────────────────────────────────────────────────────────── */
+.mobile-only {
+  display: none !important;
+}
+
+.desktop-only {
+  display: flex !important;
+}
+
+/* Segmented Toggle */
+.segmented-control {
+  display: flex;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+  border: 1px solid var(--border-glass);
+}
+
+.segmented-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.segmented-btn.active {
+  background: #ffffff;
+  color: var(--color-text-bright);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* Mobile Bottom Action Bar */
+.mobile-floating-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-panel);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-glass);
+  padding: 10px 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  z-index: 900;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.mobile-floating-actions button {
+  flex: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MEDIA QUERIES FOR TABLETS & MOBILE
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .stanzas-editor-layout.triple {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .stanzas-list-editor {
+    height: auto;
+    min-height: 250px;
+  }
+
+  .lang-tabs-container.triple {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-form {
+    grid-template-columns: 1fr;
+  }
+
+  .notes-manager-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .diff-container-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-only {
+    display: flex !important;
+  }
+  
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Single-column view switching state */
+  .cms-container {
+    position: relative;
+    width: 100%;
+  }
+
+  .cms-container.show-sidebar .cms-workspace {
+    display: none !important;
+  }
+
+  .cms-container.show-sidebar .cms-sidebar {
+    width: 100%;
+    display: flex !important;
+  }
+
+  .cms-container.show-workspace .cms-sidebar {
+    display: none !important;
+  }
+
+  .cms-container.show-workspace .cms-workspace {
+    width: 100%;
+    display: flex !important;
+  }
+
+  /* Header mobile optimization */
+  .cms-header {
+    padding: 0 14px;
+    height: 60px;
+  }
+
+  .logo-text h1 {
+    font-size: 1.05rem;
+  }
+
+  .logo-text span {
+    display: none;
+  }
+
+  .db-status-badge {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .header-actions .btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+
+  .header-actions .admin-only {
+    display: none; /* Collapsed on mobile header, available in actions */
+  }
+
+  /* Mobile Editor Header */
+  .editor-header {
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .mobile-back-btn {
+    display: inline-flex !important;
+  }
+
+  .song-title-group {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .song-title-inputs h2 {
+    font-size: 1.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .editor-header-actions {
+    display: none; /* Replaced by bottom action bar on mobile */
+  }
+
+  .song-navigation-group {
+    margin-left: 0 !important;
+  }
+
+  /* Scrollable Tabs */
+  .editor-tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 0 14px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-link {
+    padding: 12px 14px;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+
+  .editor-content-container {
+    padding: 14px;
+    padding-bottom: 70px; /* Space for mobile floating actions */
+  }
+
+  /* ChordPro Layout Mobile Switch */
+  .chordpro-editor-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .editor-pane-chords, .preview-pane-chords {
+    height: auto;
+    min-height: 400px;
+  }
+
+  #pane-chord-preview.hidden-mobile {
+    display: none !important;
+  }
+
+  #pane-chord-editor.hidden-mobile {
+    display: none !important;
+  }
+
+  /* Form controls touch optimization */
+  input[type="text"], input[type="password"], input[type="number"], select, textarea {
+    font-size: 16px !important; /* Prevents auto-zoom on iOS */
+    padding: 12px;
+  }
+
+  .form-group.half {
+    flex: 0 0 100%;
+  }
+
+  .chord-chip {
+    padding: 8px 12px;
+    font-size: 0.88rem;
+  }
+}
+
+
