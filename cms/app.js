@@ -105,7 +105,7 @@ function setupEventListeners() {
   
   // Dashboard Navigation
   if (sidebarDashboardBtn) {
-    sidebarDashboardBtn.addEventListener('click', showDashboard);
+    sidebarDashboardBtn.addEventListener('click', () => showDashboard(true));
   }
 
 
@@ -522,6 +522,11 @@ async function initializeDashboard() {
   hideLoginScreen();
   await loadMetadata();
   await fetchSongs();
+  if (window.innerWidth <= 768) {
+    showMobileSidebar();
+  } else {
+    showMobileWorkspace();
+  }
   showDashboard();
 }
 
@@ -1742,8 +1747,10 @@ async function handleUserFormSubmit(e) {
 }
 
 // --- Dashboard Logic ---
-window.showDashboard = function() {
-  showMobileWorkspace();
+window.showDashboard = function(forceWorkspace = false) {
+  if (forceWorkspace || window.innerWidth > 768) {
+    showMobileWorkspace();
+  }
   // Clear selected song reference
   state.currentSong = null;
   state.activeDraft = null;

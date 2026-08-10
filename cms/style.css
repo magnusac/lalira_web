@@ -2101,25 +2101,35 @@ input:focus, select:focus, textarea:focus {
 
   /* Header mobile optimization */
   .cms-header {
-    padding: 0 14px;
+    padding: 0 12px;
     height: 60px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .header-logo {
+    gap: 8px;
+    flex-shrink: 0;
   }
 
   .logo-text h1 {
     font-size: 1.05rem;
+    line-height: 1;
   }
 
   .logo-text span {
-    display: none;
+    display: none !important;
   }
 
   .db-status-badge {
     padding: 4px 8px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+    white-space: nowrap;
   }
 
   .header-actions {
     gap: 6px;
+    flex-shrink: 0;
   }
 
   .header-actions .btn {
@@ -2128,7 +2138,7 @@ input:focus, select:focus, textarea:focus {
   }
 
   .header-actions .admin-only {
-    display: none; /* Collapsed on mobile header, available in actions */
+    display: none !important;
   }
 
   /* Mobile Editor Header */
