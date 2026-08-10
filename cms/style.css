@@ -755,7 +755,8 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
   padding: 20px;
-  height: calc(100vh - 200px);
+  min-height: calc(100vh - 220px);
+  height: 100%;
 }
 
 .pane-header {
@@ -799,42 +800,9 @@ input:focus, select:focus, textarea:focus {
 }
 
 #chordpro-textarea {
-  flex: 1;
-  resize: none;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  background: #ffffff;
-}
-
-.lang-selector-mini {
-  display: flex;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 6px;
-  padding: 2px;
-  border: 1px solid var(--border-glass);
-}
-
-.mini-lang-btn {
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.mini-lang-btn.active {
-  background: var(--color-primary);
-  color: var(--color-text-bright);
-}
-
-#chordpro-textarea {
-  flex: 1;
-  resize: none;
+  flex: 1 1 300px;
+  min-height: 300px;
+  resize: vertical;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.95rem;
   line-height: 1.5;
@@ -1872,6 +1840,106 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   CHORD BUILDER MODAL STYLES (OPTION 1)
+   ───────────────────────────────────────────────────────────── */
+.chord-builder-modal-card {
+  max-width: 560px !important;
+  width: 92%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.chord-builder-body {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-right: 4px;
+}
+
+.chord-builder-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: hsla(5, 75%, 52%, 0.06);
+  border: 1px solid hsla(5, 75%, 52%, 0.2);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+}
+
+.builder-preview-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.builder-preview-badge {
+  font-family: var(--font-title);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  letter-spacing: 0.5px;
+}
+
+.builder-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.builder-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.builder-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.builder-chip {
+  background: #ffffff;
+  border: 1px solid var(--border-glass);
+  color: var(--color-text-bright);
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 7px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.builder-chip:hover {
+  border-color: var(--color-primary);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.builder-chip.active {
+  background: var(--color-primary) !important;
+  color: #ffffff !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 2px 6px rgba(192, 57, 43, 0.3);
+}
+
+.root-chip.builder-chip {
+  background: hsla(205, 85%, 45%, 0.08);
+  color: var(--color-translator);
+}
+
+.acc-chip.builder-chip, .slash-chip.builder-chip {
+  background: hsla(40, 95%, 40%, 0.08);
+  color: var(--color-biblical);
+}
+
+/* ─────────────────────────────────────────────────────────────
    CHORDPRO INTRO PREVIEW STYLES
    ───────────────────────────────────────────────────────────── */
 .preview-intro-container {
@@ -1881,6 +1949,14 @@ input:focus, select:focus, textarea:focus {
   margin: 10px 0;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   position: relative;
+}
+
+.preview-intro-span {
+  background: hsla(40, 95%, 55%, 0.15);
+  border-bottom: 2px solid var(--color-biblical);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
 }
 
 .preview-intro-badge {

@@ -265,21 +265,27 @@ function setupEventListeners() {
   }
 
   // Chord Assistant Toolbar Event Listeners
-  document.querySelectorAll('.chord-chip').forEach(chip => {
-    chip.addEventListener('click', (e) => {
+  const btnOpenChordBuilder = document.getElementById('btn-open-chord-builder');
+  if (btnOpenChordBuilder) {
+    btnOpenChordBuilder.addEventListener('click', (e) => {
       e.preventDefault();
-      const chordVal = chip.getAttribute('data-chord');
-      if (chordVal) {
-        insertChordOrModifier(chordVal);
-      }
+      openChordBuilderModal();
     });
-  });
+  }
 
   const btnMarkIntro = document.getElementById('btn-mark-intro');
   if (btnMarkIntro) {
     btnMarkIntro.addEventListener('click', (e) => {
       e.preventDefault();
       markSelectionAsIntro();
+    });
+  }
+
+  const btnRemoveIntro = document.getElementById('btn-remove-intro');
+  if (btnRemoveIntro) {
+    btnRemoveIntro.addEventListener('click', (e) => {
+      e.preventDefault();
+      removeIntroMarkers();
     });
   }
 
@@ -290,6 +296,23 @@ function setupEventListeners() {
       addSelectionToFootnote();
     });
   }
+
+  // Chord Builder Modal Event Listeners
+  const closeChordBuilderX = document.getElementById('close-chord-builder-x');
+  const cancelChordBuilder = document.getElementById('cancel-chord-builder');
+  const applyChordBuilder = document.getElementById('apply-chord-builder');
+  const btnResetChordBuilder = document.getElementById('btn-reset-chord-builder');
+
+  if (closeChordBuilderX) closeChordBuilderX.addEventListener('click', closeChordBuilderModal);
+  if (cancelChordBuilder) cancelChordBuilder.addEventListener('click', closeChordBuilderModal);
+  if (applyChordBuilder) applyChordBuilder.addEventListener('click', insertBuiltChord);
+  if (btnResetChordBuilder) btnResetChordBuilder.addEventListener('click', resetChordBuilder);
+
+  // Builder Chip Grid Listeners
+  setupBuilderChipGroup('#builder-roots-grid', 'data-root', (val) => { chordBuilderState.root = val; });
+  setupBuilderChipGroup('#builder-acc-grid', 'data-acc', (val) => { chordBuilderState.accidental = val; });
+  setupBuilderChipGroup('#builder-qual-grid', 'data-qual', (val) => { chordBuilderState.quality = val; });
+  setupBuilderChipGroup('#builder-slash-grid', 'data-slash', (val) => { chordBuilderState.slash = val; });
 
   // Publish Database trigger
   publishBtn.addEventListener('click', triggerPublishAll);
@@ -761,40 +784,77 @@ function switchCifraLang(lang) {
   renderChordProPreview();
 }
 
-// --- Chord Assistant Helpers ---
+// --- Chord Assistant & Chord Builder (Option 1) Helpers ---
 
-function insertChordOrModifier(val) {
-  const textarea = document.getElementById('chordpro-textarea');
-  if (!textarea) return;
+let chordBuilderState = {
+  root: 'C',
+  accidental: '',
+  quality: '',
+  slash: ''
+};
 
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const text = textarea.value;
+function setupBuilderChipGroup(containerSelector, attrName, callback) {
+  const chips = document.querySelectorAll(`${containerSelector} .builder-chip`);
+  chips.forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      e.preventDefault();
+      chips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      const val = chip.getAttribute(attrName) || '';
+      callback(val);
+      updateChordBuilderPreview();
+    });
+  });
+}
 
-  if (start !== end) {
-    // Text selected -> wrap in [...]
-    const selectedText = text.substring(start, end);
-    const replacement = `[${val}${selectedText}]`;
-    textarea.setRangeText(replacement, start, end, 'end');
-  } else {
-    // Check if cursor is currently inside [...]
-    const before = text.substring(0, start);
-    const after = text.substring(start);
-    const lastOpen = before.lastIndexOf('[');
-    const lastClose = before.lastIndexOf(']');
+function getBuiltChordString() {
+  return `[${chordBuilderState.root}${chordBuilderState.accidental}${chordBuilderState.quality}${chordBuilderState.slash}]`;
+}
 
-    if (lastOpen > lastClose && !after.startsWith(']')) {
-      // Inside brackets -> append modifier directly inside brackets
-      textarea.setRangeText(val, start, end, 'end');
-    } else {
-      // Outside brackets -> wrap in mandatory brackets [val]
-      const insertion = `[${val}]`;
-      textarea.setRangeText(insertion, start, end, 'end');
-    }
+function updateChordBuilderPreview() {
+  const previewEl = document.getElementById('chord-builder-preview');
+  if (previewEl) {
+    previewEl.textContent = getBuiltChordString();
   }
+}
 
-  textarea.focus();
-  textarea.dispatchEvent(new Event('input'));
+function openChordBuilderModal() {
+  const modal = document.getElementById('chord-builder-modal');
+  if (modal) {
+    updateChordBuilderPreview();
+    modal.classList.remove('hidden');
+  }
+}
+
+function closeChordBuilderModal() {
+  const modal = document.getElementById('chord-builder-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+function insertBuiltChord() {
+  const chordStr = getBuiltChordString(); // e.g. [F#m7/C#]
+  const textarea = document.getElementById('chordpro-textarea');
+  if (textarea) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    textarea.setRangeText(chordStr, start, end, 'end');
+    textarea.focus();
+    textarea.dispatchEvent(new Event('input'));
+  }
+  closeChordBuilderModal();
+}
+
+function resetChordBuilder() {
+  chordBuilderState = { root: 'C', accidental: '', quality: '', slash: '' };
+  
+  document.querySelectorAll('#builder-roots-grid .builder-chip').forEach(c => c.classList.toggle('active', c.getAttribute('data-root') === 'C'));
+  document.querySelectorAll('#builder-acc-grid .builder-chip').forEach(c => c.classList.toggle('active', c.getAttribute('data-acc') === ''));
+  document.querySelectorAll('#builder-qual-grid .builder-chip').forEach(c => c.classList.toggle('active', c.getAttribute('data-qual') === ''));
+  document.querySelectorAll('#builder-slash-grid .builder-chip').forEach(c => c.classList.toggle('active', c.getAttribute('data-slash') === ''));
+
+  updateChordBuilderPreview();
 }
 
 function markSelectionAsIntro() {
@@ -807,15 +867,39 @@ function markSelectionAsIntro() {
 
   if (start !== end) {
     const selectedText = text.substring(start, end);
-    const wrapped = `{start_of_intro}\n${selectedText}\n{end_of_intro}`;
+    const wrapped = `{start_of_intro}${selectedText}{end_of_intro}`;
     textarea.setRangeText(wrapped, start, end, 'end');
   } else {
-    const insertion = `{start_of_intro}\n{end_of_intro}`;
+    const insertion = `{start_of_intro}{end_of_intro}`;
     textarea.setRangeText(insertion, start, end, 'end');
   }
 
   textarea.focus();
   textarea.dispatchEvent(new Event('input'));
+}
+
+function removeIntroMarkers() {
+  const textarea = document.getElementById('chordpro-textarea');
+  if (!textarea) return;
+
+  let text = textarea.value;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+
+  if (start !== end) {
+    // If text selected -> strip intro tags from selection
+    const selectedText = text.substring(start, end);
+    const cleaned = selectedText.replace(/\{start_of_intro\}|\{end_of_intro\}|\{intro\}|\{\/intro\}/gi, '');
+    textarea.setRangeText(cleaned, start, end, 'end');
+  } else {
+    // 1-Click: No text selected -> automatically strip intro tags from whole document
+    const cleaned = text.replace(/\{start_of_intro\}|\{end_of_intro\}|\{intro\}|\{\/intro\}/gi, '');
+    textarea.value = cleaned;
+  }
+
+  textarea.focus();
+  textarea.dispatchEvent(new Event('input'));
+  showToast("Etiquetas de intro eliminadas.");
 }
 
 function addSelectionToFootnote() {
@@ -937,7 +1021,15 @@ function renderChordProPreview() {
   let html = '';
   let inIntroBlock = false;
 
-  for (let line of lines) {
+  for (let rawLine of lines) {
+    let line = rawLine;
+
+    // Handle inline {start_of_intro} and {end_of_intro} tags
+    if (line.includes('{start_of_intro}') || line.includes('{end_of_intro}')) {
+      line = line.replace(/\{start_of_intro\}/gi, '___INTRO_START___');
+      line = line.replace(/\{end_of_intro\}/gi, '___INTRO_END___');
+    }
+
     const parsed = parseChordProLine(line);
 
     if (parsed.type === 'intro_start') {
@@ -957,17 +1049,22 @@ function renderChordProPreview() {
     } else if (parsed.type === 'directive') {
       html += `<div style="font-size: 0.75rem; color: var(--color-text-muted); font-family: monospace;">${parsed.text}</div>`;
     } else if (parsed.type === 'lyrics') {
-      html += '<div class="preview-line">';
+      let lineHtml = '<div class="preview-line">';
       for (let token of parsed.tokens) {
+        let lyricText = token.text || '';
+        lyricText = lyricText.replace(/___INTRO_START___/g, '<span class="preview-intro-span"><span class="preview-intro-badge">Intro</span> ');
+        lyricText = lyricText.replace(/___INTRO_END___/g, '</span>');
+
         const chordHtml = token.chord ? `<span class="preview-chord">${token.chord}</span>` : '<span class="preview-chord">&nbsp;</span>';
-        html += `
+        lineHtml += `
           <div class="preview-token">
             ${chordHtml}
-            <span class="preview-lyric">${token.text}</span>
+            <span class="preview-lyric">${lyricText}</span>
           </div>
         `;
       }
-      html += '</div>';
+      lineHtml += '</div>';
+      html += lineHtml;
     }
   }
 

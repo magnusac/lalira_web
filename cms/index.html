@@ -315,43 +315,20 @@
                   </div>
                 </div>
 
-                <!-- Comprehensive Chord Assistant Toolbar -->
+                <!-- Chord & Editing Assistant Toolbar -->
                 <div class="chord-assistant-toolbar" id="chord-assistant-toolbar">
-                  <div class="toolbar-row toolbar-roots">
-                    <span class="toolbar-label">Notas:</span>
-                    <button type="button" class="chord-chip root-chip" data-chord="C">C</button>
-                    <button type="button" class="chord-chip root-chip" data-chord="D">D</button>
-                    <button type="button" class="chord-chip root-chip" data-chord="E">E</button>
-                    <button type="button" class="chord-chip root-chip" data-chord="F">F</button>
-                    <button type="button" class="chord-chip root-chip" data-chord="G">G</button>
-                    <button type="button" class="chord-chip root-chip" data-chord="A">A</button>
-                    <button type="button" class="chord-chip root-chip" data-chord="B">B</button>
-                    <button type="button" class="chord-chip accidental-chip" data-chord="#">#</button>
-                    <button type="button" class="chord-chip accidental-chip" data-chord="b">b</button>
-                    <button type="button" class="chord-chip slash-chip" data-chord="/">/</button>
-                  </div>
-                  <div class="toolbar-row toolbar-modifiers">
-                    <span class="toolbar-label">Variaciones:</span>
-                    <button type="button" class="chord-chip mod-chip" data-chord="m">m</button>
-                    <button type="button" class="chord-chip mod-chip" data-chord="7">7</button>
-                    <button type="button" class="chord-chip mod-chip" data-chord="maj7">maj7</button>
-                    <button type="button" class="chord-chip mod-chip" data-chord="sus2">sus2</button>
-                    <button type="button" class="chord-chip mod-chip" data-chord="sus4">sus4</button>
-                    <button type="button" class="chord-chip mod-chip" data-chord="add9">add9</button>
-                    <button type="button" class="chord-chip mod-chip" data-chord="dim">dim</button>
-                    <button type="button" class="chord-chip mod-chip" data-chord="aug">aug</button>
-                    <button type="button" class="chord-chip mod-chip" data-chord="5">5</button>
-                    <button type="button" class="chord-chip mod-chip" data-chord="6">6</button>
-                    <button type="button" class="chord-chip mod-chip" data-chord="9">9</button>
-                    <button type="button" class="chord-chip mod-chip" data-chord="11">11</button>
-                    <button type="button" class="chord-chip mod-chip" data-chord="13">13</button>
-                  </div>
                   <div class="toolbar-row toolbar-actions">
-                    <button type="button" class="btn btn-sm btn-secondary tool-action-btn" id="btn-mark-intro" title="Envolver selección con {start_of_intro} y {end_of_intro}">
+                    <button type="button" class="btn btn-primary tool-action-btn" id="btn-open-chord-builder">
+                      + Añadir Acorde
+                    </button>
+                    <button type="button" class="btn btn-secondary tool-action-btn" id="btn-mark-intro" title="Envolver selección con {start_of_intro} y {end_of_intro}">
                       ✨ Marcar Intro
                     </button>
-                    <button type="button" class="btn btn-sm btn-secondary tool-action-btn" id="btn-add-footnote" title="Copiar selección como fragmento para nota de referencia">
-                      📌 Añadir Nota a Selección
+                    <button type="button" class="btn btn-secondary tool-action-btn" id="btn-remove-intro" title="Quitar etiquetas de intro del texto">
+                      ❌ Quitar Intro
+                    </button>
+                    <button type="button" class="btn btn-secondary tool-action-btn" id="btn-add-footnote" title="Copiar selección como fragmento para nota de referencia">
+                      📌 Añadir Nota
                     </button>
                   </div>
                 </div>
@@ -766,6 +743,96 @@
           <button type="submit" class="btn btn-primary">Crear</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal for Chord Builder (Option 1) -->
+  <div id="chord-builder-modal" class="modal-overlay hidden" style="z-index: 3500;">
+    <div class="modal-card chord-builder-modal-card">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Constructor de Acordes</h2>
+        <button type="button" class="btn btn-secondary btn-sm" id="close-chord-builder-x">✕</button>
+      </div>
+
+      <div class="modal-body chord-builder-body">
+        <!-- Live Chord Preview Badge -->
+        <div class="chord-builder-preview-box">
+          <span class="builder-preview-label">Vista Previa:</span>
+          <span class="builder-preview-badge" id="chord-builder-preview">[ C ]</span>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-chord-builder" style="margin-left: auto;">Limpiar</button>
+        </div>
+
+        <!-- Section 1: Root Note -->
+        <div class="builder-section">
+          <span class="builder-section-title">Nota Principal (Tónica):</span>
+          <div class="builder-chips-grid" id="builder-roots-grid">
+            <button type="button" class="builder-chip root-chip active" data-root="C">C</button>
+            <button type="button" class="builder-chip root-chip" data-root="D">D</button>
+            <button type="button" class="builder-chip root-chip" data-root="E">E</button>
+            <button type="button" class="builder-chip root-chip" data-root="F">F</button>
+            <button type="button" class="builder-chip root-chip" data-root="G">G</button>
+            <button type="button" class="builder-chip root-chip" data-root="A">A</button>
+            <button type="button" class="builder-chip root-chip" data-root="B">B</button>
+          </div>
+        </div>
+
+        <!-- Section 2: Accidental -->
+        <div class="builder-section">
+          <span class="builder-section-title">Alteración:</span>
+          <div class="builder-chips-grid" id="builder-acc-grid">
+            <button type="button" class="builder-chip acc-chip active" data-acc="">♮ (Natural)</button>
+            <button type="button" class="builder-chip acc-chip" data-acc="#"># (Sostenido)</button>
+            <button type="button" class="builder-chip acc-chip" data-acc="b">b (Bemol)</button>
+          </div>
+        </div>
+
+        <!-- Section 3: Quality & Extensions -->
+        <div class="builder-section">
+          <span class="builder-section-title">Variación / Tipo:</span>
+          <div class="builder-chips-grid" id="builder-qual-grid">
+            <button type="button" class="builder-chip qual-chip active" data-qual="">Mayor</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="m">m (Menor)</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="7">7</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="maj7">maj7</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="m7">m7</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="sus2">sus2</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="sus4">sus4</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="add9">add9</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="dim">dim</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="aug">aug</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="5">5</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="6">6</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="9">9</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="11">11</button>
+            <button type="button" class="builder-chip qual-chip" data-qual="13">13</button>
+          </div>
+        </div>
+
+        <!-- Section 4: Slash Bass Note (Optional) -->
+        <div class="builder-section">
+          <span class="builder-section-title">Bajo / Inversión (Slash Chord):</span>
+          <div class="builder-chips-grid" id="builder-slash-grid">
+            <button type="button" class="builder-chip slash-chip active" data-slash="">(Sin Bajo)</button>
+            <button type="button" class="builder-chip slash-chip" data-slash="/C">/C</button>
+            <button type="button" class="builder-chip slash-chip" data-slash="/C#">/C#</button>
+            <button type="button" class="builder-chip slash-chip" data-slash="/D">/D</button>
+            <button type="button" class="builder-chip slash-chip" data-slash="/D#">/D#</button>
+            <button type="button" class="builder-chip slash-chip" data-slash="/E">/E</button>
+            <button type="button" class="builder-chip slash-chip" data-slash="/F">/F</button>
+            <button type="button" class="builder-chip slash-chip" data-slash="/F#">/F#</button>
+            <button type="button" class="builder-chip slash-chip" data-slash="/G">/G</button>
+            <button type="button" class="builder-chip slash-chip" data-slash="/G#">/G#</button>
+            <button type="button" class="builder-chip slash-chip" data-slash="/A">/A</button>
+            <button type="button" class="builder-chip slash-chip" data-slash="/Bb">/Bb</button>
+            <button type="button" class="builder-chip slash-chip" data-slash="/B">/B</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary" id="cancel-chord-builder">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="apply-chord-builder">Insertar Acorde</button>
+      </div>
     </div>
   </div>
 
