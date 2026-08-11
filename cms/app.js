@@ -205,6 +205,7 @@ function setupEventListeners() {
         if (inputKeyEl) inputKeyEl.value = extracted.key;
       }
 
+      adjustTextareaHeight();
       renderChordProPreview();
     }
   });
@@ -815,7 +816,17 @@ function switchCifraLang(lang) {
   document.getElementById('cifra-tiempo').value = cifra.tiempo || "";
   document.getElementById('cifra-ritmo').value = cifra.ritmo || "";
 
+  adjustTextareaHeight();
   renderChordProPreview();
+}
+
+function adjustTextareaHeight() {
+  const textarea = document.getElementById('chordpro-textarea');
+  if (textarea) {
+    textarea.style.height = 'auto';
+    const newHeight = Math.max(350, textarea.scrollHeight + 10);
+    textarea.style.height = `${newHeight}px`;
+  }
 }
 
 // --- Chord Assistant & Chord Builder (Option 1) Helpers ---

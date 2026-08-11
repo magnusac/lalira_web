@@ -287,6 +287,7 @@
 
             <div class="chordpro-editor-layout">
               <div class="editor-pane-chords" id="pane-chord-editor">
+                <!-- Row 1: Header & Language Selector -->
                 <div class="pane-header">
                   <h3>ChordPro Editor</h3>
                   <div class="lang-selector-mini">
@@ -296,26 +297,27 @@
                   </div>
                 </div>
 
-                <div class="form-row" style="margin-bottom: 12px;">
-                  <div class="form-group half">
-                    <label for="cifra-key">Tono Cifra</label>
-                    <input type="text" id="cifra-key" placeholder="Ej: F">
+                <!-- Row 2: 4 Metadata Fields in One Row -->
+                <div class="editor-metadata-row" id="editor-metadata-row">
+                  <div class="meta-field-item">
+                    <span class="meta-field-label">Tono:</span>
+                    <input type="text" id="cifra-key" class="meta-field-input" placeholder="Ej: F">
                   </div>
-                  <div class="form-group half">
-                    <label for="cifra-bpm">BPM</label>
-                    <input type="number" id="cifra-bpm" placeholder="Ej: 75">
+                  <div class="meta-field-item">
+                    <span class="meta-field-label">BPM:</span>
+                    <input type="number" id="cifra-bpm" class="meta-field-input" placeholder="75">
                   </div>
-                  <div class="form-group half">
-                    <label for="cifra-tiempo">Compás</label>
-                    <input type="text" id="cifra-tiempo" placeholder="Ej: 4/4">
+                  <div class="meta-field-item">
+                    <span class="meta-field-label">Compás:</span>
+                    <input type="text" id="cifra-tiempo" class="meta-field-input" placeholder="4/4">
                   </div>
-                  <div class="form-group half">
-                    <label for="cifra-ritmo">Ritmo</label>
-                    <input type="text" id="cifra-ritmo" placeholder="Ej: Balada, Pop">
+                  <div class="meta-field-item flex-grow">
+                    <span class="meta-field-label">Ritmo:</span>
+                    <input type="text" id="cifra-ritmo" class="meta-field-input" placeholder="Balada, Pop">
                   </div>
                 </div>
 
-                <!-- Chord & Editing Assistant Toolbar -->
+                <!-- Row 3: Quick Action Buttons Toolbar -->
                 <div class="chord-assistant-toolbar" id="chord-assistant-toolbar">
                   <div class="toolbar-row toolbar-actions">
                     <button type="button" class="btn btn-primary tool-action-btn" id="btn-open-chord-builder">

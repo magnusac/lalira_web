@@ -763,9 +763,9 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   border-bottom: 1px solid var(--border-glass);
-  padding-bottom: 12px;
+  padding-bottom: 10px;
 }
 
 .pane-header h3 {
@@ -799,14 +799,65 @@ input:focus, select:focus, textarea:focus {
   color: var(--color-text-bright);
 }
 
+/* Row 2: 4 Metadata Fields in One Row */
+.editor-metadata-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+}
+
+.meta-field-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1px solid var(--border-glass);
+  border-radius: 6px;
+  padding: 4px 10px;
+  flex: 1 1 90px;
+  min-width: 80px;
+}
+
+.meta-field-item.flex-grow {
+  flex: 2 1 140px;
+}
+
+.meta-field-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.meta-field-input {
+  border: none !important;
+  background: transparent !important;
+  padding: 2px 4px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: var(--color-text-bright) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  outline: none;
+}
+
 #chordpro-textarea {
-  flex: 1 1 300px;
-  min-height: 300px;
+  flex: 1 1 auto;
+  min-height: 350px;
+  height: auto;
   resize: vertical;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.95rem;
   line-height: 1.5;
   background: #ffffff;
+  padding: 14px;
 }
 
 /* ChordPro Output Preview */
