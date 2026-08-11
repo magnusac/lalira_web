@@ -162,13 +162,15 @@ function setupEventListeners() {
 
   // Helper to auto-extract directives from ChordPro
   const extractDirectives = (text) => {
-    const timeMatch = text.match(/\{time:\s*([^}]+)\}/i);
-    const tempoMatch = text.match(/\{tempo:\s*([^}]+)\}/i);
-    const keyMatch = text.match(/\{key:\s*([^}]+)\}/i);
+    const timeMatch = text.match(/\{time:\s*([^}]+)\}/i) || text.match(/\{compas:\s*([^}]+)\}/i);
+    const tempoMatch = text.match(/\{tempo:\s*([^}]+)\}/i) || text.match(/\{bpm:\s*([^}]+)\}/i);
+    const keyMatch = text.match(/\{key:\s*([^}]+)\}/i) || text.match(/\{tono:\s*([^}]+)\}/i) || text.match(/\{tonalidad:\s*([^}]+)\}/i);
+    const ritmoMatch = text.match(/\{ritmo:\s*([^}]+)\}/i) || text.match(/\{rhythm:\s*([^}]+)\}/i);
     return {
       time: timeMatch ? timeMatch[1].trim() : null,
       tempo: tempoMatch ? parseInt(tempoMatch[1].trim()) || null : null,
-      key: keyMatch ? keyMatch[1].trim() : null
+      key: keyMatch ? keyMatch[1].trim() : null,
+      ritmo: ritmoMatch ? ritmoMatch[1].trim() : null
     };
   };
 
@@ -190,9 +192,17 @@ function setupEventListeners() {
         targetObj.cifras[lang].bpm = extracted.tempo;
         document.getElementById('cifra-bpm').value = extracted.tempo;
       }
+      if (extracted.ritmo) {
+        targetObj.cifras[lang].ritmo = extracted.ritmo;
+        document.getElementById('cifra-ritmo').value = extracted.ritmo;
+      }
       if (extracted.key) {
         targetObj.cifras[lang].tonalidad = extracted.key;
         document.getElementById('cifra-key').value = extracted.key;
+        // Sync to overall song metadata tone field (Tab 3)
+        targetObj.tonalidad = extracted.key;
+        const inputKeyEl = document.getElementById('input-key');
+        if (inputKeyEl) inputKeyEl.value = extracted.key;
       }
 
       renderChordProPreview();
@@ -202,8 +212,27 @@ function setupEventListeners() {
   // Chords key/bpm/capo listeners to keep working data updated
   document.getElementById('cifra-key').addEventListener('input', (e) => {
     const targetObj = state.activeDraft ? state.activeDraft.data : state.currentSong;
-    if (targetObj) targetObj.cifras[state.currentCifraLang].tonalidad = e.target.value;
+    if (targetObj) {
+      targetObj.cifras[state.currentCifraLang].tonalidad = e.target.value;
+      targetObj.tonalidad = e.target.value;
+      const inputKeyEl = document.getElementById('input-key');
+      if (inputKeyEl) inputKeyEl.value = e.target.value;
+    }
   });
+  const inputKeyEl = document.getElementById('input-key');
+  if (inputKeyEl) {
+    inputKeyEl.addEventListener('input', (e) => {
+      const targetObj = state.activeDraft ? state.activeDraft.data : state.currentSong;
+      if (targetObj) {
+        targetObj.tonalidad = e.target.value;
+        if (targetObj.cifras && targetObj.cifras[state.currentCifraLang]) {
+          targetObj.cifras[state.currentCifraLang].tonalidad = e.target.value;
+        }
+        const cifraKeyEl = document.getElementById('cifra-key');
+        if (cifraKeyEl) cifraKeyEl.value = e.target.value;
+      }
+    });
+  }
   document.getElementById('cifra-bpm').addEventListener('input', (e) => {
     const targetObj = state.activeDraft ? state.activeDraft.data : state.currentSong;
     if (targetObj) targetObj.cifras[state.currentCifraLang].bpm = parseInt(e.target.value) || 0;
@@ -781,7 +810,7 @@ function switchCifraLang(lang) {
   const cifra = workingData.cifras[lang] || { contenido: '', tonalidad: '', tiempo: '', bpm: 0, ritmo: '' };
   
   document.getElementById('chordpro-textarea').value = cifra.contenido || "";
-  document.getElementById('cifra-key').value = cifra.tonalidad || "";
+  document.getElementById('cifra-key').value = cifra.tonalidad || workingData.tonalidad || "";
   document.getElementById('cifra-bpm').value = cifra.bpm || "";
   document.getElementById('cifra-tiempo').value = cifra.tiempo || "";
   document.getElementById('cifra-ritmo').value = cifra.ritmo || "";

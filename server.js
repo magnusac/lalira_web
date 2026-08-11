@@ -633,14 +633,14 @@ function getProductionSong(songId) {
   song.estrofas = stanzasStmt.all(songId);
 
   // Chords
-  const cifraStmt = dbCatalog.prepare("SELECT idioma, contenido, tonalidad, capotraste, bpm FROM cifra WHERE cancion_id = ?");
+  const cifraStmt = dbCatalog.prepare("SELECT idioma, contenido, tonalidad, capotraste, bpm, ritmo, tiempo FROM cifra WHERE cancion_id = ?");
   const cifras = {};
   cifraStmt.all(songId).forEach(r => {
     cifras[r.idioma] = r;
   });
   for (const lang of ['es', 'pt', 'en']) {
     if (!cifras[lang]) {
-      cifras[lang] = { idioma: lang, contenido: '', tonalidad: '', capotraste: 0, bpm: 0 };
+      cifras[lang] = { idioma: lang, contenido: '', tonalidad: '', capotraste: 0, bpm: 0, ritmo: '', tiempo: '' };
     }
   }
   song.cifras = cifras;
@@ -906,15 +906,17 @@ app.post('/api/drafts/:songId/approve', authenticateToken, requireAdmin, (req, r
       if (cifra && cifra.contenido && cifra.contenido.trim()) {
         const bpm = parseInt(cifra.bpm) || null;
         dbCatalog.prepare(`
-          INSERT OR REPLACE INTO cifra (cancion_id, idioma, contenido, tonalidad, capotraste, bpm)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT OR REPLACE INTO cifra (cancion_id, idioma, contenido, tonalidad, capotraste, bpm, ritmo, tiempo)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
           targetSongId,
           lang,
           cifra.contenido.trim(),
           cifra.tonalidad || null,
           cifra.capotraste || 0,
-          bpm
+          bpm,
+          cifra.ritmo || null,
+          cifra.tiempo || null
         );
       } else {
         dbCatalog.prepare("DELETE FROM cifra WHERE cancion_id = ? AND idioma = ?").run(targetSongId, lang);
