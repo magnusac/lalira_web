@@ -24,3 +24,21 @@ El CMS cuenta con editores diferenciados para manejar los aspectos de una alaban
 
 **Razonamiento**:  
 Cualquier sincronización o parsing automático que modifique entidades de datos entre pestañas altera la previsibilidad del UX y destruye el trabajo manual que los editores realizan en las estrofas de texto plano.
+
+---
+
+### ADR-002: Entorno de Ejecución del Backend y Despliegue en Producción (PHP)
+
+**Fecha**: 12 de agosto de 2026  
+**Estado**: Aprobado / En Vigor  
+**Contexto**:  
+El repositorio contiene dos archivos de backend:
+1. `api/index.php` — Controlador API REST en PHP.
+2. `server.js` — Servidor auxiliar en Node.js (usado solo para desarrollo local).
+
+**Regla de Diseño y Despliegue**:
+1. **Servidor de Producción Canónico**: El entorno de producción corre en **PHP (Apache/LiteSpeed)** y todas las peticiones del CMS en vivo son procesadas única y exclusivamente por **`api/index.php`**.
+2. **Cualquier cambio de lógica en la API debe aplicarse primero y obligatoriamente en `api/index.php`**.
+3. `server.js` se mantendrá sincronizado únicamente como runner secundario de desarrollo local.
+4. **Despliegue**: Los despliegues de la API REST del CMS a producción deben garantizar la copia y actualización del archivo `api/index.php` en el servidor web remote.
+

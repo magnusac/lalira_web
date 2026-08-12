@@ -868,17 +868,9 @@ if (preg_match('/^\/drafts\/(-?\d+)\/approve$/', $path, $matches) && $request_me
             }
         }
         
-        // DEFENSIVE SAFEGUARD: Check if the payload actually contains ANY stanzas or ChordPro text before deleting existing stanzas!
-        $hasChordProContent = false;
-        foreach (['es', 'pt', 'en'] as $lang) {
-            if (!empty($songData['cifras'][$lang]['contenido']) && trim($songData['cifras'][$lang]['contenido']) !== '') {
-                $hasChordProContent = true;
-                break;
-            }
-        }
-
-        $hasStanzaContent = false;
+        // 3. Save Stanzas (strictly save explicit stanzas from editor without auto-generating from ChordPro)
         $stanzas = $songData['estrofas'] ?? [];
+        $hasStanzaContent = false;
         foreach ($stanzas as $s) {
             if (!empty($s['texto']) && trim($s['texto']) !== '') {
                 $hasStanzaContent = true;
@@ -886,41 +878,24 @@ if (preg_match('/^\/drafts\/(-?\d+)\/approve$/', $path, $matches) && $request_me
             }
         }
 
-        if ($hasChordProContent || $hasStanzaContent) {
+        if ($hasStanzaContent) {
             $delStanzas = $dbCatalog->prepare("DELETE FROM estrofa WHERE cancion_id = ?");
             $delStanzas->execute([$targetSongId]);
-            
-            // We process both languages to write to stanzas
-            for ($langIdx = 0; $langIdx < count(['es', 'pt', 'en']); $langIdx++) {
-                $lang = ['es', 'pt', 'en'][$langIdx];
-                $cifra = $songData['cifras'][$lang] ?? null;
-                if ($cifra && !empty($cifra['contenido']) && trim($cifra['contenido']) !== '') {
-                    $cleaned = preg_replace('/\[[^\]]+\]/', '', $cifra['contenido']);
-                    $cleaned = preg_replace('/\{[^\}]+\}/', '', $cleaned);
-                    $blocks = preg_split('/\n\s*\n/', $cleaned);
-                    $order = 1;
-                    foreach ($blocks as $block) {
-                        $block = trim($block);
-                        if (!$block) continue;
-                        $lines = array_filter(array_map('trim', explode("\n", $block)));
-                        if (empty($lines)) continue;
-                        $textLines = implode("\n", $lines);
-                        $insStanza = $dbCatalog->prepare("
-                            INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
-                            VALUES (?, ?, ?, ?, ?, 1)
-                        ");
-                        $insStanza->execute([$targetSongId, $lang, $order++, 'estrofa', $textLines]);
-                    }
-                } else {
-                    foreach ($stanzas as $s) {
-                        if (($s['idioma'] ?? 'es') === $lang && !empty($s['texto']) && trim($s['texto']) !== '') {
-                            $insStanza = $dbCatalog->prepare("
-                                INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
-                                VALUES (?, ?, ?, ?, ?, ?)
-                            ");
-                            $insStanza->execute([$targetSongId, $lang, $s['orden'], $s['tipo'], trim($s['texto']), $s['repeticiones'] ?? 1]);
-                        }
-                    }
+
+            foreach ($stanzas as $s) {
+                if (!empty($s['texto']) && trim($s['texto']) !== '') {
+                    $insStanza = $dbCatalog->prepare("
+                        INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ");
+                    $insStanza->execute([
+                        $targetSongId,
+                        $s['idioma'] ?? 'es',
+                        $s['orden'] ?? 1,
+                        $s['tipo'] ?? 'estrofa',
+                        trim($s['texto']),
+                        $s['repeticiones'] ?? 1
+                    ]);
                 }
             }
         }
