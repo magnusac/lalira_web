@@ -846,58 +846,23 @@ app.post('/api/drafts/:songId/approve', authenticateToken, requireAdmin, (req, r
       }
     }
 
-    // 3. Extract stanzas from ChordPro chords (automatically sync)
-    // DEFENSIVE SAFEGUARD: Check if the payload actually contains ANY stanzas or ChordPro text before deleting existing stanzas!
-    const hasChordProContent = ['es', 'pt', 'en'].some(lang => {
-      const cifra = songData.cifras && songData.cifras[lang];
-      return cifra && cifra.contenido && cifra.contenido.trim();
-    });
+    // 3. Save Stanzas (strictly save explicit stanzas from editor without auto-generating from ChordPro)
+    const stanzas = songData.estrofas || [];
+    const hasStanzaContent = stanzas.some(s => s.texto && s.texto.trim());
 
-    const hasStanzaContent = (songData.estrofas || []).some(s => s.texto && s.texto.trim());
-
-    if (hasChordProContent || hasStanzaContent) {
+    if (hasStanzaContent) {
       dbCatalog.prepare("DELETE FROM estrofa WHERE cancion_id = ?").run(targetSongId);
-      
-      // We process both languages to write to stanzas
-      for (const lang of ['es', 'pt', 'en']) {
-        const cifra = songData.cifras && songData.cifras[lang];
-        if (cifra && cifra.contenido && cifra.contenido.trim()) {
-          // Strip out chords and bracket directives
-          let cleaned = cifra.contenido.replace(/\[[^\]]+\]/g, '');
-          cleaned = cleaned.replace(/\{[^\}]+\}/g, '');
 
-          const blocks = cleaned.split(/\n\s*\n/);
-          let order = 1;
-          for (let block of blocks) {
-            block = block.trim();
-            if (!block) continue;
-
-            const lines = block.split('\n').map(l => l.trim()).filter(l => l);
-            if (lines.length === 0) continue;
-
-            let tipo = 'estrofa';
-
-            const textLines = lines.join('\n');
-            dbCatalog.prepare(`
-              INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
-              VALUES (?, ?, ?, ?, ?, 1)
-            `).run(targetSongId, lang, order++, tipo, textLines);
-          }
-        } else {
-          // If ChordPro is empty, fall back to whatever is defined in the stanzas tab editor
-          const stanzas = songData.estrofas || [];
-          stanzas.filter(s => s.idioma === lang).forEach(s => {
-            if (s.texto && s.texto.trim()) {
-              dbCatalog.prepare(`
-                INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
-                VALUES (?, ?, ?, ?, ?, ?)
-              `).run(targetSongId, lang, s.orden, s.tipo, s.texto.trim(), s.repeticiones || 1);
-            }
-          });
+      for (const s of stanzas) {
+        if (s.texto && s.texto.trim()) {
+          dbCatalog.prepare(`
+            INSERT INTO estrofa (cancion_id, idioma, orden, tipo, texto, repeticiones)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).run(targetSongId, s.idioma || 'es', s.orden || 1, s.tipo || 'estrofa', s.texto.trim(), s.repeticiones || 1);
         }
       }
     } else {
-      console.log(`[SAFEGUARD] Preserving existing stanzas for songId=${targetSongId} because draft contained no new stanzas or ChordPro chords.`);
+      console.log(`[STANZAS] Preserving existing stanzas for songId=${targetSongId} because draft contained no new explicit stanzas.`);
     }
 
     // 4. Update Chords (cifra)
