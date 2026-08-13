@@ -1818,23 +1818,28 @@ window.showDashboard = function(forceWorkspace = false) {
   const draftsList = state.songs.filter(s => s.draft_status === 'draft');
   const pendingList = state.songs.filter(s => s.draft_status === 'pending_approval');
   const missingChordsList = state.songs.filter(s => parseInt(s.has_chords) === 0);
+  const withChordsList = state.songs.filter(s => parseInt(s.has_chords) === 1);
   
   // Update UI values
   const totalSongsEl = document.getElementById('stat-total-songs');
   const totalDraftsEl = document.getElementById('stat-total-drafts');
   const totalPendingEl = document.getElementById('stat-total-pending');
   const totalMissingChordsEl = document.getElementById('stat-missing-chords');
+  const totalWithChordsEl = document.getElementById('stat-with-chords');
   const draftsCountBadge = document.getElementById('drafts-count-badge');
   const pendingCountBadge = document.getElementById('pending-count-badge');
   const missingChordsCountBadge = document.getElementById('missing-chords-count-badge');
+  const withChordsCountBadge = document.getElementById('with-chords-count-badge');
 
   if (totalSongsEl) totalSongsEl.textContent = totalSongs;
   if (totalDraftsEl) totalDraftsEl.textContent = draftsList.length;
   if (totalPendingEl) totalPendingEl.textContent = pendingList.length;
   if (totalMissingChordsEl) totalMissingChordsEl.textContent = missingChordsList.length;
+  if (totalWithChordsEl) totalWithChordsEl.textContent = withChordsList.length;
   if (draftsCountBadge) draftsCountBadge.textContent = draftsList.length;
   if (pendingCountBadge) pendingCountBadge.textContent = pendingList.length;
   if (missingChordsCountBadge) missingChordsCountBadge.textContent = missingChordsList.length;
+  if (withChordsCountBadge) withChordsCountBadge.textContent = withChordsList.length;
   
   // Render Pending List
   const pendingContainer = document.getElementById('dashboard-pending-list');
@@ -1911,6 +1916,45 @@ window.showDashboard = function(forceWorkspace = false) {
           badgeHtml = '<span class="badge-role admin">Pendiente</span>';
         } else {
           badgeHtml = '<span class="badge-role" style="background: rgba(0,0,0,0.04); color: var(--color-text-muted);">Sin cifras</span>';
+        }
+        return `
+          <div class="dashboard-item-card" onclick="loadSong(${song.id})">
+            <div class="dashboard-item-info">
+              <div class="dashboard-item-title">[${song.himnario_codigo}] #${song.numero_en_himnario} - ${song.titulo || '(Sin título)'}</div>
+              <div class="dashboard-item-meta">
+                <span>ID: ${song.id}</span>
+                ${badgeHtml}
+              </div>
+            </div>
+            <div class="dashboard-item-actions">
+              <button class="btn btn-sm btn-primary" onclick="loadSong(${song.id}, event)">Editar</button>
+            </div>
+          </div>
+        `;
+      }).join('') + suffixMsg;
+    }
+  }
+
+  // Render With Chords List
+  const withChordsContainer = document.getElementById('dashboard-with-chords-list');
+  if (withChordsContainer) {
+    if (withChordsList.length === 0) {
+      withChordsContainer.innerHTML = '<div class="empty-list-message">No hay alabanzas con acordes.</div>';
+    } else {
+      const showLimit = 50;
+      const slicedList = withChordsList.slice(0, showLimit);
+      const suffixMsg = withChordsList.length > showLimit
+        ? `<div class="empty-list-message" style="padding: 10px 0 0 0; font-size: 0.75rem;">Mostrando ${showLimit} primeras de ${withChordsList.length}. Usa el buscador lateral para ver otras.</div>`
+        : '';
+      
+      withChordsContainer.innerHTML = slicedList.map(song => {
+        let badgeHtml = '';
+        if (song.draft_status === 'draft') {
+          badgeHtml = '<span class="badge-role editor">Borrador</span>';
+        } else if (song.draft_status === 'pending_approval') {
+          badgeHtml = '<span class="badge-role admin">Pendiente</span>';
+        } else {
+          badgeHtml = '<span class="badge-role active" style="background: rgba(46, 204, 113, 0.12); color: var(--color-success);">Con cifra</span>';
         }
         return `
           <div class="dashboard-item-card" onclick="loadSong(${song.id})">

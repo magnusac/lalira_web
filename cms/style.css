@@ -1568,6 +1568,11 @@ input:focus, select:focus, textarea:focus {
   color: var(--color-historico);
 }
 
+.badge-success {
+  background-color: hsla(150, 75%, 40%, 0.15);
+  color: var(--color-success);
+}
+
 /* Dashboard Styling */
 .sidebar-nav-container {
   padding: 16px 16px 8px 16px;
@@ -1630,7 +1635,7 @@ input:focus, select:focus, textarea:focus {
 
 .dashboard-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
 }
 
@@ -1672,6 +1677,11 @@ input:focus, select:focus, textarea:focus {
 .missing-chords-card .stat-icon-wrapper {
   background: hsla(280, 60%, 45%, 0.1);
   color: var(--color-historico);
+}
+
+.with-chords-card .stat-icon-wrapper {
+  background: hsla(150, 75%, 45%, 0.1);
+  color: var(--color-success);
 }
 
 .stat-icon {

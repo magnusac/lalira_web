@@ -498,7 +498,8 @@ app.get('/api/songs', authenticateToken, (req, res) => {
   try {
     let sql = `
       SELECT c.id, c.numero_en_himnario, c.tonalidad, c.himnario_id, h.codigo as himnario_codigo,
-             m.titulo, m.autor
+             m.titulo, m.autor,
+             EXISTS(SELECT 1 FROM cifra WHERE cancion_id = c.id AND contenido IS NOT NULL AND TRIM(contenido) != '') as has_chords
       FROM cancion c
       JOIN himnario h ON c.himnario_id = h.id
       LEFT JOIN cancion_metadata m ON c.id = m.cancion_id AND m.idioma = 'es'
@@ -569,6 +570,11 @@ app.get('/api/songs', authenticateToken, (req, res) => {
           if (!matchesTitle && !matchesNumber && !matchesStanzas) continue;
         }
 
+        let hasChords = 0;
+        if (data.cifras && typeof data.cifras === 'object') {
+          hasChords = Object.values(data.cifras).some(c => c && c.contenido && c.contenido.trim().length > 0) ? 1 : 0;
+        }
+
         addedSongs.push({
           id: d.cancion_id,
           numero_en_himnario: num,
@@ -577,6 +583,7 @@ app.get('/api/songs', authenticateToken, (req, res) => {
           himnario_codigo: hymnalMap.get(data.himnario_id) || "",
           titulo: title,
           autor: autor,
+          has_chords: hasChords,
           draft_status: d.status
         });
       } catch (err) {
