@@ -1815,10 +1815,11 @@ window.showDashboard = function(forceWorkspace = false) {
 
   // Calculate stats dynamically from state.songs
   const totalSongs = state.songs.length;
+  const isSongWithChords = (s) => (s.has_chords === 1 || s.has_chords === '1' || s.has_chords === true || Number(s.has_chords) === 1);
   const draftsList = state.songs.filter(s => s.draft_status === 'draft');
   const pendingList = state.songs.filter(s => s.draft_status === 'pending_approval');
-  const missingChordsList = state.songs.filter(s => parseInt(s.has_chords) === 0);
-  const withChordsList = state.songs.filter(s => parseInt(s.has_chords) === 1);
+  const missingChordsList = state.songs.filter(s => !isSongWithChords(s));
+  const withChordsList = state.songs.filter(s => isSongWithChords(s));
   
   // Update UI values
   const totalSongsEl = document.getElementById('stat-total-songs');

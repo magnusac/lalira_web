@@ -499,7 +499,7 @@ app.get('/api/songs', authenticateToken, (req, res) => {
     let sql = `
       SELECT c.id, c.numero_en_himnario, c.tonalidad, c.himnario_id, h.codigo as himnario_codigo,
              m.titulo, m.autor,
-             EXISTS(SELECT 1 FROM cifra WHERE cancion_id = c.id AND contenido IS NOT NULL AND TRIM(contenido) != '') as has_chords
+             CAST(EXISTS(SELECT 1 FROM cifra WHERE cancion_id = c.id AND contenido IS NOT NULL AND TRIM(contenido) != '') AS INTEGER) as has_chords
       FROM cancion c
       JOIN himnario h ON c.himnario_id = h.id
       LEFT JOIN cancion_metadata m ON c.id = m.cancion_id AND m.idioma = 'es'
@@ -538,6 +538,7 @@ app.get('/api/songs', authenticateToken, (req, res) => {
 
     const songsWithDraftStatus = songs.map(s => ({
       ...s,
+      has_chords: (s.has_chords === 1 || s.has_chords === true || s.has_chords === '1') ? 1 : 0,
       draft_status: draftMap.get(s.id) || null // 'draft', 'pending_approval' or null
     }));
 
