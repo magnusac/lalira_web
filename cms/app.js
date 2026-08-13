@@ -51,6 +51,7 @@ const cancelUserForm = document.getElementById('cancel-user-form');
 const searchInput = document.getElementById('search-input');
 const hymnarySelect = document.getElementById('hymnary-select');
 const sectionSelect = document.getElementById('section-select');
+const chordsSelect = document.getElementById('chords-select');
 const songsList = document.getElementById('songs-list');
 const songsCount = document.getElementById('songs-count');
 const versionLabel = document.getElementById('version-label');
@@ -136,6 +137,7 @@ function setupEventListeners() {
   });
   hymnarySelect.addEventListener('change', fetchSongs);
   sectionSelect.addEventListener('change', fetchSongs);
+  chordsSelect.addEventListener('change', fetchSongs);
 
   // Tabs navigation
   tabLinks.forEach(link => {
@@ -625,6 +627,7 @@ async function fetchSongs() {
     const params = new URLSearchParams();
     if (hymnarySelect.value) params.append('himnario_id', hymnarySelect.value);
     if (sectionSelect.value) params.append('seccion_id', sectionSelect.value);
+    if (chordsSelect.value) params.append('has_chords', chordsSelect.value);
     if (searchInput.value.trim()) params.append('search', searchInput.value.trim());
 
     const res = await fetch(`${API_BASE}/songs?${params.toString()}`, {

@@ -429,6 +429,7 @@ if ($path === '/songs' && $request_method === 'GET') {
     
     $himnario_id = $_GET['himnario_id'] ?? null;
     $seccion_id = $_GET['seccion_id'] ?? null;
+    $has_chords = $_GET['has_chords'] ?? null;
     $search = $_GET['search'] ?? null;
     
     $sql = "
@@ -449,6 +450,13 @@ if ($path === '/songs' && $request_method === 'GET') {
     if ($seccion_id !== null && $seccion_id !== '') {
         $sql .= " AND c.seccion_id = ?";
         $params[] = $seccion_id;
+    }
+    if ($has_chords !== null && $has_chords !== '') {
+        if ($has_chords === '1') {
+            $sql .= " AND EXISTS(SELECT 1 FROM cifra WHERE cancion_id = c.id AND contenido IS NOT NULL AND TRIM(contenido) != '')";
+        } else if ($has_chords === '0') {
+            $sql .= " AND NOT EXISTS(SELECT 1 FROM cifra WHERE cancion_id = c.id AND contenido IS NOT NULL AND TRIM(contenido) != '')";
+        }
     }
     if ($search !== null && $search !== '') {
         $sql .= " AND (m.titulo LIKE ? OR c.numero_en_himnario LIKE ? OR c.id IN (SELECT cancion_id FROM estrofa WHERE texto LIKE ?))";
