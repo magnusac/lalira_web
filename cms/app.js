@@ -676,19 +676,19 @@ async function initializeDashboard() {
 
 // --- Sidebar Collapse & Expand Helpers ---
 
-function toggleSidebar() {
+window.toggleSidebar = function() {
   const container = document.getElementById('app-container');
   if (!container) return;
 
   const isCollapsed = container.classList.contains('sidebar-collapsed');
   if (isCollapsed) {
-    expandSidebar();
+    window.expandSidebar();
   } else {
-    collapseSidebar();
+    window.collapseSidebar();
   }
-}
+};
 
-function collapseSidebar() {
+window.collapseSidebar = function() {
   const container = document.getElementById('app-container');
   const btn = document.getElementById('toggle-sidebar-btn');
   const label = document.getElementById('toggle-sidebar-label');
@@ -698,9 +698,9 @@ function collapseSidebar() {
   if (label) label.textContent = 'Expandir';
 
   localStorage.setItem('lalira_sidebar_collapsed', 'true');
-}
+};
 
-function expandSidebar() {
+window.expandSidebar = function() {
   const container = document.getElementById('app-container');
   const btn = document.getElementById('toggle-sidebar-btn');
   const label = document.getElementById('toggle-sidebar-label');
@@ -710,14 +710,14 @@ function expandSidebar() {
   if (label) label.textContent = 'Panel';
 
   localStorage.setItem('lalira_sidebar_collapsed', 'false');
-}
+};
 
 function initSidebarState() {
   const savedState = localStorage.getItem('lalira_sidebar_collapsed');
   if (savedState === 'true') {
-    collapseSidebar();
+    window.collapseSidebar();
   } else {
-    expandSidebar();
+    window.expandSidebar();
   }
 }
 

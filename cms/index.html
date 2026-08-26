@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>La Lira CMS — Portal de Edición</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css?v=2.0.1">
+  <link rel="stylesheet" href="./style.css?v=2.0.7">
   <link rel="shortcut icon" href="../assets/logo.svg" type="image/svg+xml">
   <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
   <link rel="apple-touch-icon" href="../assets/logo.svg">
@@ -47,7 +47,7 @@
         <h1>La Lira CMS</h1>
         <span id="user-display-name">Cargando usuario...</span>
       </div>
-      <button id="toggle-sidebar-btn" class="btn btn-secondary btn-sm toggle-sidebar-btn" title="Ocultar/Mostrar panel lateral (Alt + S)">
+      <button id="toggle-sidebar-btn" class="btn btn-secondary btn-sm toggle-sidebar-btn" onclick="window.toggleSidebar && window.toggleSidebar()" title="Ocultar/Mostrar panel lateral (Alt + S)">
         <svg viewBox="0 0 24 24" class="btn-icon"><path fill="currentColor" d="M3 3h18v18H3V3zm16 16V5H9v14h10zM7 5H5v14h2V5z"/></svg>
         <span class="btn-label" id="toggle-sidebar-label">Panel</span>
       </button>
