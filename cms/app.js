@@ -665,11 +665,6 @@ async function initializeDashboard() {
   hideLoginScreen();
   await loadMetadata();
   await fetchSongs();
-  if (window.innerWidth <= 768) {
-    showMobileSidebar();
-  } else {
-    showMobileWorkspace();
-  }
   initSidebarState();
   showDashboard();
 }
@@ -680,7 +675,7 @@ window.toggleSidebar = function() {
   const container = document.getElementById('app-container');
   if (!container) return;
 
-  const isCollapsed = container.classList.contains('sidebar-collapsed');
+  const isCollapsed = container.classList.contains('sidebar-collapsed') || (window.innerWidth <= 768 && container.classList.contains('show-workspace'));
   if (isCollapsed) {
     window.expandSidebar();
   } else {
@@ -693,7 +688,11 @@ window.collapseSidebar = function() {
   const btn = document.getElementById('toggle-sidebar-btn');
   const label = document.getElementById('toggle-sidebar-label');
 
-  if (container) container.classList.add('sidebar-collapsed');
+  if (container) {
+    container.classList.add('sidebar-collapsed');
+    container.classList.add('show-workspace');
+    container.classList.remove('show-sidebar');
+  }
   if (btn) btn.classList.add('active');
   if (label) label.textContent = 'Expandir';
 
@@ -705,7 +704,11 @@ window.expandSidebar = function() {
   const btn = document.getElementById('toggle-sidebar-btn');
   const label = document.getElementById('toggle-sidebar-label');
 
-  if (container) container.classList.remove('sidebar-collapsed');
+  if (container) {
+    container.classList.remove('sidebar-collapsed');
+    container.classList.add('show-sidebar');
+    container.classList.remove('show-workspace');
+  }
   if (btn) btn.classList.remove('active');
   if (label) label.textContent = 'Panel';
 
@@ -714,10 +717,18 @@ window.expandSidebar = function() {
 
 function initSidebarState() {
   const savedState = localStorage.getItem('lalira_sidebar_collapsed');
-  if (savedState === 'true') {
-    window.collapseSidebar();
+  if (window.innerWidth <= 768) {
+    if (savedState === 'true') {
+      window.collapseSidebar();
+    } else {
+      showMobileSidebar();
+    }
   } else {
-    window.expandSidebar();
+    if (savedState === 'true') {
+      window.collapseSidebar();
+    } else {
+      window.expandSidebar();
+    }
   }
 }
 
