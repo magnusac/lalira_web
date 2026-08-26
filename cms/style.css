@@ -243,25 +243,39 @@ body::after {
 /* Sidebar List & Smooth Collapse */
 .cms-sidebar {
   width: 340px;
+  min-width: 340px;
+  flex-shrink: 0;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-glass);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.2s ease;
+              min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease,
+              padding 0.3s ease;
 }
 
 /* Collapsed Sidebar State (Desktop 100% Workspace Expansion) */
 .cms-container.sidebar-collapsed .cms-sidebar {
   width: 0 !important;
   min-width: 0 !important;
-  margin-left: -340px !important;
+  margin-left: 0 !important;
+  padding: 0 !important;
   opacity: 0 !important;
   pointer-events: none !important;
   border: none !important;
   overflow: hidden !important;
+}
+
+.cms-workspace {
+  flex: 1 1 0%;
+  min-width: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
 }
 
 .cms-container.sidebar-collapsed .cms-workspace {
