@@ -110,6 +110,19 @@ function setupEventListeners() {
   }
 
 
+  // Sidebar Toggle & Keyboard Shortcut
+  const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
+  if (toggleSidebarBtn) {
+    toggleSidebarBtn.addEventListener('click', toggleSidebar);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.altKey && (e.key === 's' || e.key === 'S')) || (e.ctrlKey && (e.key === 'b' || e.key === 'B'))) {
+      e.preventDefault();
+      toggleSidebar();
+    }
+  });
+
   // Logout Trigger
   logoutBtn.addEventListener('click', handleLogout);
 
@@ -326,6 +339,104 @@ function setupEventListeners() {
     btnAddFootnote.addEventListener('click', (e) => {
       e.preventDefault();
       addSelectionToFootnote();
+    });
+  }
+
+  // PDF Extraction Logic
+  const btnExtractPdf = document.getElementById('btn-extract-pdf');
+  const pdfUpload = document.getElementById('pdf-upload');
+  const btnViewPdf = document.getElementById('btn-view-pdf');
+  const pdfExtractLoading = document.getElementById('pdf-extract-loading');
+  const pdfDiscrepanciesAlert = document.getElementById('pdf-discrepancies-alert');
+  const pdfDiscrepanciesList = document.getElementById('pdf-discrepancies-list');
+  
+  if (btnExtractPdf && pdfUpload) {
+    btnExtractPdf.addEventListener('click', () => {
+      pdfUpload.click();
+    });
+    
+    pdfUpload.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const formData = new FormData();
+      formData.append('pdf', file);
+      
+      // Collect current plain lyrics from state ONLY for the active language
+      let plainLyrics = "";
+      const sourceStanzas = state.activeDraft?.data?.estrofas || state.currentSong?.estrofas || [];
+      plainLyrics = sourceStanzas.filter(s => s.idioma === state.currentCifraLang).map(s => s.texto).join("\n\n");
+      
+      formData.append('letras', plainLyrics);
+      formData.append('cancion_id', state.currentSong ? state.currentSong.id : 'temp');
+      
+      pdfExtractLoading.classList.remove('hidden');
+      pdfDiscrepanciesAlert.classList.add('hidden');
+      pdfDiscrepanciesList.innerHTML = '';
+      
+      try {
+        const response = await fetch(`${API_BASE}/pdf-extract`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          let errorMsg = data.error || 'Error al procesar PDF';
+          if (data.details) {
+            try {
+              const detailsObj = typeof data.details === 'string' ? JSON.parse(data.details) : data.details;
+              if (detailsObj.error && detailsObj.error.code === 503) {
+                 errorMsg = 'La inteligencia artificial está sobrecargada en este momento. Por favor, intenta de nuevo en unos minutos.';
+              } else if (detailsObj.error && detailsObj.error.message) {
+                 errorMsg += ': ' + detailsObj.error.message;
+              }
+            } catch(e) {
+               // keep default error
+            }
+          }
+          throw new Error(errorMsg);
+        }
+        
+        // Update UI
+        document.getElementById('cifra-key').value = data.tonalidad || '';
+        document.getElementById('cifra-bpm').value = data.bpm || '';
+        document.getElementById('cifra-tiempo').value = data.tiempo || '';
+        document.getElementById('cifra-ritmo').value = data.ritmo || '';
+        document.getElementById('chordpro-textarea').value = data.chordpro || '';
+        
+        if (data.pdf_url) {
+          state.currentSong = state.currentSong || {};
+          state.currentSong.partitura_url = data.pdf_url;
+          if (state.activeDraft && state.activeDraft.data) {
+             state.activeDraft.data.partitura_url = data.pdf_url;
+          }
+          btnViewPdf.classList.remove('hidden');
+          btnViewPdf.onclick = () => window.open(data.pdf_url, '_blank');
+        }
+        
+        if (data.discrepancias && data.discrepancias.length > 0) {
+          data.discrepancias.forEach(d => {
+            const li = document.createElement('li');
+            li.textContent = d;
+            pdfDiscrepanciesList.appendChild(li);
+          });
+          pdfDiscrepanciesAlert.classList.remove('hidden');
+          showToast('⚠️ Resultado NO confiable. Resuelve las diferencias.', 'error');
+        } else {
+          showToast('PDF procesado correctamente', 'success');
+        }
+        
+        saveDraftSong();
+        
+      } catch (err) {
+        showToast(err.message, true);
+      } finally {
+        pdfExtractLoading.classList.add('hidden');
+        pdfUpload.value = ''; // Reset
+      }
     });
   }
 
@@ -559,7 +670,55 @@ async function initializeDashboard() {
   } else {
     showMobileWorkspace();
   }
+  initSidebarState();
   showDashboard();
+}
+
+// --- Sidebar Collapse & Expand Helpers ---
+
+function toggleSidebar() {
+  const container = document.getElementById('app-container');
+  if (!container) return;
+
+  const isCollapsed = container.classList.contains('sidebar-collapsed');
+  if (isCollapsed) {
+    expandSidebar();
+  } else {
+    collapseSidebar();
+  }
+}
+
+function collapseSidebar() {
+  const container = document.getElementById('app-container');
+  const btn = document.getElementById('toggle-sidebar-btn');
+  const label = document.getElementById('toggle-sidebar-label');
+
+  if (container) container.classList.add('sidebar-collapsed');
+  if (btn) btn.classList.add('active');
+  if (label) label.textContent = 'Expandir';
+
+  localStorage.setItem('lalira_sidebar_collapsed', 'true');
+}
+
+function expandSidebar() {
+  const container = document.getElementById('app-container');
+  const btn = document.getElementById('toggle-sidebar-btn');
+  const label = document.getElementById('toggle-sidebar-label');
+
+  if (container) container.classList.remove('sidebar-collapsed');
+  if (btn) btn.classList.remove('active');
+  if (label) label.textContent = 'Panel';
+
+  localStorage.setItem('lalira_sidebar_collapsed', 'false');
+}
+
+function initSidebarState() {
+  const savedState = localStorage.getItem('lalira_sidebar_collapsed');
+  if (savedState === 'true') {
+    collapseSidebar();
+  } else {
+    expandSidebar();
+  }
 }
 
 // Show Toast message
@@ -709,7 +868,17 @@ window.loadSong = async function(songId) {
     state.currentSongId = songId;
     state.currentCifraLang = 'es';
     state.notesList = state.activeDraft ? (state.activeDraft.data.notas || []) : (state.currentSong?.notas || []);
-
+    
+    const btnViewPdf = document.getElementById('btn-view-pdf');
+    if (btnViewPdf) {
+      if (data.partitura_url) {
+        btnViewPdf.classList.remove('hidden');
+        btnViewPdf.onclick = () => window.open(data.partitura_url, '_blank');
+      } else {
+        btnViewPdf.classList.add('hidden');
+        btnViewPdf.onclick = null;
+      }
+    }
     // Sync active highlight
     fetchSongsListSync();
 

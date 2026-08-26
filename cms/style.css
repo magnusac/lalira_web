@@ -240,7 +240,7 @@ body::after {
   overflow: hidden;
 }
 
-/* Sidebar List */
+/* Sidebar List & Smooth Collapse */
 .cms-sidebar {
   width: 340px;
   background: var(--bg-sidebar);
@@ -248,6 +248,40 @@ body::after {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease;
+}
+
+/* Collapsed Sidebar State (Desktop 100% Workspace Expansion) */
+.cms-container.sidebar-collapsed .cms-sidebar {
+  width: 0 !important;
+  min-width: 0 !important;
+  margin-left: -340px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+.cms-container.sidebar-collapsed .cms-workspace {
+  width: 100% !important;
+  flex: 1 1 100% !important;
+}
+
+.toggle-sidebar-btn {
+  margin-left: 12px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toggle-sidebar-btn.active {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
 }
 
 .filter-box {
