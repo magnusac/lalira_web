@@ -2155,10 +2155,10 @@ async function triggerPublishAll() {
     if (!res.ok) throw new Error(logData.error || "Publicación fallida");
 
     if (logData.uploaded_to_server) {
-      publishStatusText.textContent = `¡Publicación completa! Servidores web y app móviles actualizados (v${logData.version}).`;
+      publishStatusText.textContent = `¡Publicación completa! Servidores web y app móviles actualizados (v${logData.new_version}).`;
       publishStatusText.style.color = 'var(--color-success)';
     } else {
-      publishStatusText.textContent = `⚠️ Base de datos compilada localmente en assets/ (v${logData.version}). ATENCIÓN: No se subió al servidor remoto por falta de credenciales SSH. Sube los archivos manualmente si es necesario.`;
+      publishStatusText.textContent = `⚠️ Base de datos compilada localmente en assets/ (v${logData.new_version}). ATENCIÓN: No se subió al servidor remoto por falta de credenciales SSH. Sube los archivos manualmente si es necesario.`;
       publishStatusText.style.color = '#f39c12';
     }
 

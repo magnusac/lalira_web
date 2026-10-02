@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import cp from 'node:child_process';
 import os from 'node:os';
 import { OAuth2Client } from 'google-auth-library';
+import { publishCatalog, nextSongId, CatalogPublishError } from './catalog_publisher.js';
 import jwksClient from 'jwks-rsa';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,7 +16,7 @@ const __dirname = path.dirname(__filename);
 
 const LOCAL_ENV_PATH = path.join(__dirname, '.env');
 const SIBLING_ENV_PATH = '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/exports/.env';
-const ENV_PATH = fs.existsSync(LOCAL_ENV_PATH) ? LOCAL_ENV_PATH : SIBLING_ENV_PATH;
+const ENV_PATH = process.env.ENV_FILE || (fs.existsSync(LOCAL_ENV_PATH) ? LOCAL_ENV_PATH : SIBLING_ENV_PATH);
 
 // Helper to load env
 function loadEnv() {
@@ -45,8 +46,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'lalira_cms_secret_token_key_2026';
 // Detect if running on production host or local machine fallback
 const isProductionHost = __dirname.includes('/home3/magnusal/') || fs.existsSync('/home3/magnusal/public_html/lalira');
 
+// Working catalog edited by the CMS (ADR-005), outside public_html once migrated.
+const PROD_WORKING_DB = '/home3/magnusal/lalira/catalogo_v2_working.sqlite';
 const DB_PATH = process.env.DB_PATH || (isProductionHost 
-  ? '/home3/magnusal/public_html/lalira/catalogo/catalogo_v2.sqlite' 
+  ? (fs.existsSync(PROD_WORKING_DB) ? PROD_WORKING_DB : '/home3/magnusal/public_html/lalira/catalogo/catalogo_v2.sqlite')
   : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo_v2.sqlite');
 
 const CMS_DB_PATH = process.env.CMS_DB_PATH || (isProductionHost 
@@ -60,6 +63,10 @@ const VERSION_PATH = process.env.VERSION_PATH || (isProductionHost
 const ASSETS_DB_PATH = process.env.ASSETS_DB_PATH || (isProductionHost 
   ? '/home3/magnusal/public_html/lalira/assets/catalogo_v2.sqlite' 
   : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/assets/catalogo_v2.sqlite');
+
+// Published snapshots live next to version_v2.json and are served from this base URL.
+const CATALOG_PUBLISH_DIR = process.env.CATALOG_PUBLISH_DIR || path.dirname(VERSION_PATH);
+const CATALOG_PUBLIC_BASE_URL = process.env.CATALOG_PUBLIC_BASE_URL || 'https://lalira.app/catalogo';
 
 
 const app = express();
@@ -805,18 +812,21 @@ app.post('/api/drafts/:songId/approve', authenticateToken, requireAdmin, (req, r
         );
         targetSongId = customId;
       } else {
+        // Explicit ID: SQLite's implicit rowid would reuse the ID of a deleted song (ADR-005).
+        const newSongId = nextSongId(dbCatalog, dbCms);
         const insertSongStmt = dbCatalog.prepare(`
-          INSERT INTO cancion (himnario_id, seccion_id, tonalidad, intro, numero_en_himnario)
-          VALUES (?, ?, ?, ?, ?)
+          INSERT INTO cancion (id, himnario_id, seccion_id, tonalidad, intro, numero_en_himnario)
+          VALUES (?, ?, ?, ?, ?, ?)
         `);
-        const result = insertSongStmt.run(
+        insertSongStmt.run(
+          newSongId,
           songData.himnario_id,
           songData.seccion_id || null,
           songData.tonalidad || '',
           songData.intro || '',
           songData.numero_en_himnario
         );
-        targetSongId = result.lastInsertRowid;
+        targetSongId = newSongId;
       }
     } else {
       const updateSongStmt = dbCatalog.prepare(`
@@ -983,99 +993,64 @@ app.get('/api/version', authenticateToken, (req, res) => {
 });
 
 
+// Publishes the working catalog as an immutable snapshot (ADR-005).
 app.post('/api/publish', authenticateToken, requireAdmin, (req, res) => {
+  let result;
   try {
-    if (!fs.existsSync(VERSION_PATH)) {
-      return res.status(500).json({ error: 'Ruta version.json no encontrada' });
-    }
+    result = publishCatalog({
+      workingDbPath: DB_PATH,
+      cmsDb: dbCms,
+      versionPath: VERSION_PATH,
+      publishDir: CATALOG_PUBLISH_DIR,
+      publicBaseUrl: CATALOG_PUBLIC_BASE_URL,
+      assetsDbPath: ASSETS_DB_PATH,
+    });
+  } catch (err) {
+    logAudit(req.user.id, 'PUBLISH_FAILED', null, err.message);
+    const status = err instanceof CatalogPublishError ? 422 : 500;
+    return res.status(status).json({ error: status === 422 ? err.message : `Error interno al publicar: ${err.message}` });
+  }
 
-    const vdata = JSON.parse(fs.readFileSync(VERSION_PATH, 'utf8'));
-    const oldVersion = vdata.version || '2.0.0';
-    
-    // Generate date-based version
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}.${mm}.${dd}`;
+  let uploaded = false;
+  let uploadLog;
 
-    let newVersion;
-    if (oldVersion.startsWith(todayStr)) {
-      const parts = oldVersion.split('.');
-      if (parts.length === 3) {
-        newVersion = `${todayStr}.1`;
-      } else if (parts.length > 3) {
-        const rev = parseInt(parts[3], 10) + 1;
-        newVersion = `${todayStr}.${rev}`;
-      } else {
-        newVersion = `${todayStr}.1`;
-      }
-    } else {
-      newVersion = todayStr;
-    }
-
-    // Clean compile (Vacuum database file)
-    dbCatalog.exec("VACUUM;");
-    const newSize = fs.statSync(DB_PATH).size;
-
-    vdata.version = newVersion;
-    vdata.size = newSize;
-
-    fs.writeFileSync(VERSION_PATH, JSON.stringify(vdata, null, 2) + '\n', 'utf8');
-
-    // Copy to client assets
-    fs.copyFileSync(DB_PATH, ASSETS_DB_PATH);
-
-    // SCP upload integration
+  if (isProductionHost) {
+    uploaded = true;
+    uploadLog = 'Ejecutando en producción. Snapshot y version_v2.json publicados localmente.';
+  } else if (process.env.CATALOG_PUBLISH_UPLOAD !== '1') {
+    // A local publish must not overwrite production unless explicitly requested.
+    uploadLog = 'Publicación local. No se subió al servidor (CATALOG_PUBLISH_UPLOAD=1 para habilitarlo).';
+  } else {
     const env = loadEnv();
     const sshHost = env.SSH_HOST;
     const sshUser = env.SSH_USER;
     const sshPort = env.SSH_PORT || '22';
     const sshKey = env.SSH_KEY ? env.SSH_KEY.replace(/^~/, os.homedir()) : null;
     const remotePath = env.SSH_REMOTE_PATH;
-
-    let uploaded = false;
-    let uploadLog = "No se configuraron las credenciales SSH en el archivo .env";
+    uploadLog = 'No se configuraron las credenciales SSH en el archivo .env';
 
     if (sshHost && sshUser && remotePath) {
       const sshKeyPath = sshKey || path.join(process.env.HOME || '', '.ssh', 'id_rsa');
-      const scpBase = [
-        '-P', sshPort,
-        '-i', sshKeyPath,
-        '-o', 'StrictHostKeyChecking=accept-new',
-        '-o', 'IdentitiesOnly=yes'
-      ];
+      const scpBase = ['-P', sshPort, '-i', sshKeyPath, '-o', 'StrictHostKeyChecking=accept-new', '-o', 'IdentitiesOnly=yes'];
       const remoteTarget = `${sshUser}@${sshHost}:${remotePath}`;
+      const runScp = (localFile) => cp.spawnSync('scp', [...scpBase, localFile, remoteTarget], { encoding: 'utf8' });
 
-      const runScp = (localFile) => {
-        return cp.spawnSync('scp', [...scpBase, localFile, remoteTarget], { encoding: 'utf8' });
-      };
-
-      const resDb = runScp(DB_PATH);
-      const resVer = runScp(VERSION_PATH);
+      // Snapshot first, manifest last: the remote JSON never points to a missing file.
+      const resDb = runScp(result.snapshot_path);
+      const resVer = resDb.status === 0 ? runScp(VERSION_PATH) : { status: -1, stderr: 'omitido' };
 
       if (resDb.status === 0 && resVer.status === 0) {
         uploaded = true;
-        uploadLog = "Carga SCP exitosa a " + sshHost;
+        uploadLog = 'Carga SCP exitosa a ' + sshHost;
       } else {
         uploadLog = `Error SCP. DB: ${resDb.stderr || 'OK'}. Ver: ${resVer.stderr || 'OK'}`;
       }
     }
-
-    logAudit(req.user.id, 'PUBLISH', null, `Publicación v${newVersion} realizada.`);
-    res.json({
-      success: true,
-      old_version: oldVersion,
-      new_version: newVersion,
-      db_size: newSize,
-      copied_to_assets: true,
-      uploaded_to_server: uploaded,
-      upload_log: uploadLog
-    });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
+
+  logAudit(req.user.id, 'PUBLISH', null, `Publicación v${result.new_version} (${result.catalog_version}) realizada.`);
+  const { snapshot_path, ...publicResult } = result;
+  res.json({ success: true, ...publicResult, copied_to_assets: true, uploaded_to_server: uploaded, upload_log: uploadLog });
 });
 // ── PUBLIC WEB MODULE ENDPOINTS ───────────────────────────────────────────────
 

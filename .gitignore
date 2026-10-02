@@ -5,3 +5,4 @@ dist/
 # Secretos y archivos locales
 .env
 scratch/
+backups/
