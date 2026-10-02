@@ -51,10 +51,12 @@ if ($api_pos !== false) {
 }
 $path = '/' . trim($path, '/');
 
-// Load environment configuration file
+require_once __DIR__ . '/catalog_publisher.php';
+
+// Load environment configuration file (ENV_FILE overrides it, e.g. for isolated tests)
 $local_env = dirname(__DIR__) . '/.env';
 $sibling_env = '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/exports/.env';
-$env_file = file_exists($local_env) ? $local_env : $sibling_env;
+$env_file = getenv('ENV_FILE') ?: (file_exists($local_env) ? $local_env : $sibling_env);
 
 if (file_exists($env_file)) {
     $lines = file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -93,8 +95,11 @@ if ($db_version === '1') {
       ? '/home3/magnusal/public_html/lalira/catalogo/catalogo.sqlite' 
       : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo.sqlite');
 } else {
-    $db_path = getenv('DB_PATH') ?: ($is_prod 
-      ? '/home3/magnusal/public_html/lalira/catalogo/catalogo_v2.sqlite' 
+    // Working catalog edited by the CMS (ADR-005). It lives outside public_html; the
+    // legacy public path is only used until the working DB is migrated out of it.
+    $prod_working_db = '/home3/magnusal/lalira/catalogo_v2_working.sqlite';
+    $db_path = getenv('DB_PATH') ?: ($is_prod
+      ? (file_exists($prod_working_db) ? $prod_working_db : '/home3/magnusal/public_html/lalira/catalogo/catalogo_v2.sqlite')
       : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/catalogo_v2.sqlite');
 }
 
@@ -109,6 +114,10 @@ $version_path = getenv('VERSION_PATH') ?: ($is_prod
 $assets_db_path = getenv('ASSETS_DB_PATH') ?: ($is_prod 
   ? dirname(__DIR__) . '/assets/catalogo_v2.sqlite' 
   : '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/assets/catalogo_v2.sqlite');
+
+// Published snapshots live next to version_v2.json and are served from this base URL.
+$catalog_publish_dir = getenv('CATALOG_PUBLISH_DIR') ?: dirname($version_path);
+$catalog_public_base_url = getenv('CATALOG_PUBLIC_BASE_URL') ?: 'https://lalira.app/catalogo';
 
 // Initialize database connections
 try {
@@ -1064,18 +1073,21 @@ if (preg_match('/^\/drafts\/(-?\d+)\/approve$/', $path, $matches) && $request_me
                     ]);
                     $targetSongId = $customId;
                 } else {
+                    // Explicit ID: SQLite's implicit rowid would reuse the ID of a deleted song (ADR-005).
+                    $newSongId = catalog_next_song_id($dbCatalog, $dbCms);
                     $insertSongStmt = $dbCatalog->prepare("
-                        INSERT INTO cancion (himnario_id, seccion_id, tonalidad, intro, numero_en_himnario)
-                        VALUES (?, ?, ?, ?, ?)
+                        INSERT INTO cancion (id, himnario_id, seccion_id, tonalidad, intro, numero_en_himnario)
+                        VALUES (?, ?, ?, ?, ?, ?)
                     ");
                     $insertSongStmt->execute([
+                        $newSongId,
                         empty($songData['himnario_id']) ? null : $songData['himnario_id'],
                         $songData['seccion_id'] ?? null,
                         $songData['tonalidad'] ?? '',
                         $songData['intro'] ?? '',
                         $songData['numero_en_himnario']
                     ]);
-                    $targetSongId = (int)$dbCatalog->lastInsertId();
+                    $targetSongId = $newSongId;
                 }
             }
         }
@@ -1302,8 +1314,12 @@ if (preg_match('/^\/songs\/(\d+)$/', $path, $matches) && $request_method === 'DE
     $songId = (int)$matches[1];
 
     try {
+        $songStmt = $dbCatalog->prepare("SELECT id, himnario_id, numero_en_himnario FROM cancion WHERE id = ?");
+        $songStmt->execute([$songId]);
+        $deletedSong = $songStmt->fetch();
+
         $dbCatalog->beginTransaction();
-        
+
         $dbCatalog->prepare("DELETE FROM estrofa WHERE cancion_id = ?")->execute([$songId]);
         $dbCatalog->prepare("DELETE FROM cifra WHERE cancion_id = ?")->execute([$songId]);
         $dbCatalog->prepare("DELETE FROM nota WHERE cancion_id = ?")->execute([$songId]);
@@ -1311,15 +1327,18 @@ if (preg_match('/^\/songs\/(\d+)$/', $path, $matches) && $request_method === 'DE
         $dbCatalog->prepare("DELETE FROM cancion WHERE id = ?")->execute([$songId]);
         
         $dbCatalog->commit();
-        
+
+        // The ID must never be handed to a different song (ADR-005).
+        if ($deletedSong) catalog_record_tombstones($dbCms, [$deletedSong]);
+
         // Also delete any pending draft in CMS DB
         $dbCms->prepare("DELETE FROM draft_hymn WHERE cancion_id = ?")->execute([$songId]);
-        
+
         log_audit($dbCms, $user['id'], 'DELETE_SONG', $songId, "Canción ID {$songId} eliminada permanentemente del catálogo.");
-        
+
         json_response(["success" => true]);
     } catch (Exception $e) {
-        $dbCatalog->rollBack();
+        if ($dbCatalog->inTransaction()) $dbCatalog->rollBack();
         json_response(["error" => $e->getMessage()], 500);
     }
 }
@@ -1357,107 +1376,82 @@ if (preg_match('/^\/users\/(\d+)$/', $path, $matches) && $request_method === 'DE
 }
 
 // POST /publish
+// Publishes the working catalog as an immutable snapshot (ADR-005).
 if ($path === '/publish' && $request_method === 'POST') {
     $user = require_auth();
     require_admin($user);
-    
-    if (!file_exists($version_path)) {
-        json_response(["error" => "Ruta version.json no encontrada"], 500);
+
+    try {
+        $result = catalog_publish([
+            'working_db_path' => $db_path,
+            'cms_db' => $dbCms,
+            'version_path' => $version_path,
+            'publish_dir' => $catalog_publish_dir,
+            'public_base_url' => $catalog_public_base_url,
+            'assets_db_path' => $assets_db_path,
+        ]);
+    } catch (CatalogPublishException $e) {
+        log_audit($dbCms, $user['id'], 'PUBLISH_FAILED', null, $e->getMessage());
+        json_response(["error" => $e->getMessage()], 422);
+    } catch (Exception $e) {
+        log_audit($dbCms, $user['id'], 'PUBLISH_FAILED', null, $e->getMessage());
+        json_response(["error" => "Error interno al publicar: " . $e->getMessage()], 500);
     }
-    
-    $vdata = json_decode(file_get_contents($version_path), true) ?? [];
-    $oldVersion = $vdata['version'] ?? '2.0.0';
-    
-    $todayStr = date('Y.m.d');
-    
-    if (str_starts_with($oldVersion, $todayStr)) {
-        $parts = explode('.', $oldVersion);
-        if (count($parts) === 3) {
-            $newVersion = $todayStr . '.1';
-        } elseif (count($parts) > 3) {
-            $rev = (int)$parts[3] + 1;
-            $newVersion = $todayStr . '.' . $rev;
-        } else {
-            $newVersion = $todayStr . '.1';
-        }
-    } else {
-        $newVersion = $todayStr;
-    }
-    
-    $dbCatalog->exec("VACUUM;");
-    $newSize = filesize($db_path);
-    
-    $vdata['version'] = $newVersion;
-    $vdata['size'] = $newSize;
-    
-    file_put_contents($version_path, json_encode($vdata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
-    
-    copy($db_path, $assets_db_path);
-    
+
     $uploaded = false;
-    $uploadLog = "No se configuraron las credenciales SSH en el archivo .env";
-    
+    $uploadLog = "Ejecutando en producción. Snapshot y version_v2.json publicados localmente.";
+
     if ($is_prod) {
         $uploaded = true;
-        $uploadLog = "Ejecutando en producción. Base de datos y versión actualizadas localmente.";
+    } elseif (getenv('CATALOG_PUBLISH_UPLOAD') !== '1') {
+        // A local publish must not overwrite production unless explicitly requested:
+        // production has its own working DB and version history.
+        $uploadLog = "Publicación local. No se subió al servidor (CATALOG_PUBLISH_UPLOAD=1 para habilitarlo).";
     } else {
         $sshHost = $_ENV['SSH_HOST'] ?? '';
         $sshUser = $_ENV['SSH_USER'] ?? '';
         $sshPort = $_ENV['SSH_PORT'] ?? '22';
         $sshKey = $_ENV['SSH_KEY'] ?? '';
         $remotePath = $_ENV['SSH_REMOTE_PATH'] ?? '';
-        
+        $uploadLog = "No se configuraron las credenciales SSH en el archivo .env";
+
         if (!empty($sshHost) && !empty($sshUser) && !empty($remotePath)) {
-            $sshKeyPath = $sshKey;
-            if (str_starts_with($sshKeyPath, '~')) {
-                $home = getenv('HOME') ?: '/Users/magnus.carlos';
-                $sshKeyPath = str_replace('~', $home, $sshKeyPath);
-            }
-            if (empty($sshKeyPath)) {
-                $home = getenv('HOME') ?: '/Users/magnus.carlos';
-                $sshKeyPath = $home . '/.ssh/id_rsa';
-            }
-            
+            $home = getenv('HOME') ?: '/Users/magnus.carlos';
+            $sshKeyPath = empty($sshKey) ? $home . '/.ssh/id_rsa' : str_replace('~', $home, $sshKey);
+
             $scpCmdBase = sprintf(
                 "scp -P %s -i %s -o StrictHostKeyChecking=accept-new -o IdentitiesOnly=yes",
                 escapeshellarg($sshPort),
                 escapeshellarg($sshKeyPath)
             );
-            
-            $remoteTarget = sprintf(
-                "%s@%s:%s",
-                $sshUser,
-                $sshHost,
-                $remotePath
-            );
-            
-            $cmdDb = sprintf("%s %s %s 2>&1", $scpCmdBase, escapeshellarg($db_path), escapeshellarg($remoteTarget));
-            $cmdVer = sprintf("%s %s %s 2>&1", $scpCmdBase, escapeshellarg($version_path), escapeshellarg($remoteTarget));
-            
+            $remoteTarget = sprintf("%s@%s:%s", $sshUser, $sshHost, $remotePath);
+
+            // Snapshot first, manifest last: the remote JSON never points to a missing file.
+            $cmdDb = sprintf("%s %s %s 2>&1", $scpCmdBase, escapeshellarg($result['snapshot_path']), escapeshellarg($remoteTarget));
             exec($cmdDb, $outputDb, $statusDb);
-            exec($cmdVer, $outputVer, $statusVer);
-            
+            $statusVer = -1;
+            $outputVer = [];
+            if ($statusDb === 0) {
+                $cmdVer = sprintf("%s %s %s 2>&1", $scpCmdBase, escapeshellarg($version_path), escapeshellarg($remoteTarget));
+                exec($cmdVer, $outputVer, $statusVer);
+            }
+
             if ($statusDb === 0 && $statusVer === 0) {
                 $uploaded = true;
                 $uploadLog = "Carga SCP exitosa a " . $sshHost;
             } else {
-                $errDb = implode("\n", $outputDb);
-                $errVer = implode("\n", $outputVer);
-                $uploadLog = "Error SCP. DB Status: $statusDb ($errDb). Ver Status: $statusVer ($errVer)";
+                $uploadLog = "Error SCP. DB Status: $statusDb (" . implode("\n", $outputDb) . "). Ver Status: $statusVer (" . implode("\n", $outputVer) . ")";
             }
         }
     }
-    
-    log_audit($dbCms, $user['id'], 'PUBLISH', null, "Publicación v{$newVersion} realizada.");
-    json_response([
-        "success" => true,
-        "old_version" => $oldVersion,
-        "new_version" => $newVersion,
-        "db_size" => $newSize,
+
+    log_audit($dbCms, $user['id'], 'PUBLISH', null, "Publicación v{$result['new_version']} ({$result['catalog_version']}) realizada.");
+    unset($result['snapshot_path']);
+    json_response(array_merge(["success" => true], $result, [
         "copied_to_assets" => true,
         "uploaded_to_server" => $uploaded,
         "upload_log" => $uploadLog
-    ]);
+    ]));
 }
 
 // --- PUBLIC ENDPOINTS (Web Module) ---
