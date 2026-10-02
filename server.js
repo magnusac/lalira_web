@@ -992,10 +992,27 @@ app.post('/api/publish', authenticateToken, requireAdmin, (req, res) => {
     const vdata = JSON.parse(fs.readFileSync(VERSION_PATH, 'utf8'));
     const oldVersion = vdata.version || '2.0.0';
     
-    // Bump version patch
-    const parts = oldVersion.split('.');
-    parts[parts.length - 1] = String(Number(parts[parts.length - 1]) + 1);
-    const newVersion = parts.join('.');
+    // Generate date-based version
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}.${mm}.${dd}`;
+
+    let newVersion;
+    if (oldVersion.startsWith(todayStr)) {
+      const parts = oldVersion.split('.');
+      if (parts.length === 3) {
+        newVersion = `${todayStr}.1`;
+      } else if (parts.length > 3) {
+        const rev = parseInt(parts[3], 10) + 1;
+        newVersion = `${todayStr}.${rev}`;
+      } else {
+        newVersion = `${todayStr}.1`;
+      }
+    } else {
+      newVersion = todayStr;
+    }
 
     // Clean compile (Vacuum database file)
     dbCatalog.exec("VACUUM;");

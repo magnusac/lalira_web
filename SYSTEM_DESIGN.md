@@ -42,3 +42,30 @@ El repositorio contiene dos archivos de backend:
 3. `server.js` se mantendrá sincronizado únicamente como runner secundario de desarrollo local.
 4. **Despliegue**: Los despliegues de la API REST del CMS a producción deben garantizar la copia y actualización del archivo `api/index.php` en el servidor web remote.
 
+---
+
+### ADR-003: Integración de IA para Extracción de Partituras (Gemini)
+
+**Fecha**: 24 de agosto de 2026  
+**Estado**: Aprobado / En Vigor  
+**Contexto**:  
+El CMS integra la API de Gemini para analizar PDFs de partituras y mapear acordes visuales en el texto plano de la base de datos, generando formato ChordPro.
+
+**Regla de Diseño**:
+1. **Preservación del Texto (Anchor-based)**: El LLM actúa como formateador inyector de acordes, no como creador de texto. Utiliza el texto plano existente como ancla inmutable. Cualquier diferencia encontrada en la partitura se descarta en favor del texto de la DB.
+2. **Cero Dependencias Externas (Single File API)**: Para mantener la naturaleza procedural de `api/index.php`, la integración con Gemini se realiza mediante cURL sobre la API REST HTTP nativa de Google (sin Composer ni SDKs).
+3. **Resolución de Conflictos vía Usuario**: Ante discrepancias líricas, el servidor jamás asume o corrige datos; el sistema devuelve un arreglo de discrepancias que el frontend presenta como alerta crítica para que el editor humano lo resuelva.
+
+---
+
+### ADR-004: Date-based Database Versioning (YYYY.MM.DD)
+
+**Fecha**: 21 de septiembre de 2026  
+**Estado**: Aprobado / En Vigor  
+**Contexto**:  
+El CMS genera versiones de la base de datos (`version_v2.json`) para que la app móvil (himnario) determine cuándo descargar actualizaciones. Anteriormente usaba un sistema de incrementos (ej. `2.0.14`).
+
+**Regla de Diseño**:
+1. **Formato Base**: El número de versión publicado debe seguir el formato `YYYY.MM.DD` correspondiente a la fecha actual del servidor.
+2. **Sufijo de Revisión (Same-Day Publish)**: Si se realizan múltiples publicaciones en un mismo día, se debe agregar y aumentar un número de revisión (`YYYY.MM.DD.Rev`, ej: `2026.09.21.1`) para garantizar que el string de versión cambie y la app móvil detecte la actualización.
+3. **Compatibilidad App Móvil**: La app móvil realiza una verificación estricta de string (`===`), lo que hace compatible este formato de hasta 4 segmentos de puntos, sin depender de librerías SemVer estrictas.

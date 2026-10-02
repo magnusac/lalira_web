@@ -934,6 +934,18 @@ input:focus, select:focus, textarea:focus {
   position: relative;
 }
 
+.preview-token.has-chord::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  background-color: var(--color-primary);
+  opacity: 0.35;
+  border-radius: 2px;
+}
+
 .preview-chord {
   height: 1.2em;
   line-height: 1.2em;
@@ -2246,8 +2258,12 @@ input:focus, select:focus, textarea:focus {
     font-size: 0.75rem;
   }
 
-  .header-actions .admin-only {
+  .header-actions .admin-only:not(#publish-btn) {
     display: none !important;
+  }
+
+  #publish-btn .publish-label {
+    display: none;
   }
 
   /* Mobile Editor Header */
@@ -2335,4 +2351,69 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
+/* --- Drag & Drop and Nudge Styles --- */
 
+.preview-chord {
+  cursor: grab;
+  position: relative;
+  transition: background-color 0.15s ease, border-radius 0.15s ease;
+}
+
+.preview-chord:active {
+  cursor: grabbing;
+}
+
+.preview-chord.dragging {
+  opacity: 0.5;
+  background-color: var(--color-secondary);
+  border-radius: 4px;
+}
+
+.preview-token.drag-over {
+  border-bottom: 2px solid var(--color-primary);
+  background-color: var(--color-primary-light, hsla(5, 75%, 52%, 0.1));
+}
+
+.preview-chord.selected-chord {
+  background-color: var(--color-primary-light, hsla(5, 75%, 52%, 0.15));
+  border-radius: 4px;
+  outline: 1px solid var(--color-primary);
+}
+
+.chord-nudge-toolbar {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  gap: 4px;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-radius: 8px;
+  padding: 4px;
+  border: 1px solid var(--border-glass);
+}
+
+.chord-nudge-btn {
+  background: var(--bg-app);
+  border: 1px solid var(--border-glass);
+  border-radius: 4px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: var(--color-text-normal);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.chord-nudge-btn:active {
+  background: var(--color-secondary);
+}
+
+.chord-nudge-btn:hover {
+  background: var(--color-secondary-hover);
+}

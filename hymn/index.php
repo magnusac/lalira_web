@@ -1,26 +1,93 @@
 <?php
-// Extraer la ruta solicitada
-$uri = $_SERVER['REQUEST_URI']; // ej: /shared-list/UID/LISTID
+// Extraer la ruta solicitada (ej: /hymn/100058)
+$uri = $_SERVER['REQUEST_URI'];
 $parts = explode('/', trim(parse_url($uri, PHP_URL_PATH), '/'));
 
-$ownerUid = isset($parts[1]) ? $parts[1] : '';
-$listId = isset($parts[2]) ? $parts[2] : '';
+$hymnId = isset($parts[1]) ? preg_replace('/[^0-9a-zA-Z_-]/', '', $parts[1]) : '';
 
-// Reconstruir el link profundo (Custom URI Scheme)
-$deepLink = "lalira://shared-list/" . htmlspecialchars($ownerUid) . "/" . htmlspecialchars($listId);
+// Reconstruir el link profundo con el esquema oficial de la app
+$deepLink = !empty($hymnId) ? "lalira://hymn/" . htmlspecialchars($hymnId) : "lalira://";
+
+// Helper para convertir títulos a Title Case respetando UTF-8
+function formatTitleCase($str) {
+    if (empty($str)) return '';
+    return mb_convert_case(mb_strtolower($str, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
+}
+
+// Intentar consultar datos del himno en la base de datos SQLite
+$songNumber = '';
+$songTitle = '';
+
+if (!empty($hymnId)) {
+    $possiblePaths = [
+        dirname(__DIR__) . '/catalogo/catalogo_v2.sqlite',
+        '/home3/magnusal/public_html/lalira/catalogo/catalogo_v2.sqlite',
+        getenv('DB_PATH') ?: '',
+        '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/assets/catalogo_v2.sqlite'
+    ];
+
+    $dbPath = null;
+    foreach ($possiblePaths as $p) {
+        if (!empty($p) && file_exists($p)) {
+            $dbPath = $p;
+            break;
+        }
+    }
+
+    if ($dbPath) {
+        try {
+            $db = new PDO("sqlite:" . $dbPath);
+            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
+            $stmt = $db->prepare("
+                SELECT c.numero_en_himnario, m.titulo 
+                FROM cancion c 
+                LEFT JOIN cancion_metadata m ON c.id = m.cancion_id AND m.idioma = 'es' 
+                WHERE c.id = ? 
+                LIMIT 1
+            ");
+            $stmt->execute([$hymnId]);
+            $song = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($song) {
+                $songNumber = trim($song['numero_en_himnario'] ?? '');
+                $rawTitle = trim($song['titulo'] ?? '');
+                $songTitle = formatTitleCase($rawTitle);
+            }
+        } catch (Exception $e) {
+            // Silencioso: fallback a textos generales
+        }
+    }
+}
+
+// Construir títulos y textos dinámicos
+if (!empty($songNumber) && !empty($songTitle)) {
+    $headingText = "#{$songNumber} {$songTitle}";
+    $pageTitle = "#{$songNumber} {$songTitle} - La Lira";
+    $ogTitle = "#{$songNumber} {$songTitle}";
+    $ogDesc = "Abre y reproduce el himno #{$songNumber} con letra y acordes en la aplicación oficial La Lira.";
+} elseif (!empty($hymnId)) {
+    $headingText = "Himno en La Lira";
+    $pageTitle = "Himno en La Lira";
+    $ogTitle = "Himno en La Lira";
+    $ogDesc = "Abre y reproduce este himno con letra y acordes en la aplicación oficial La Lira.";
+} else {
+    $headingText = "La Lira - Himnario";
+    $pageTitle = "La Lira - Himnario";
+    $ogTitle = "La Lira - Himnario Cristiano";
+    $ogDesc = "Tus alabanzas favoritas con letras y acordes en la aplicación oficial La Lira.";
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lista Compartida - La Lira</title>
+  <title><?php echo htmlspecialchars($pageTitle); ?></title>
 
   <!-- Open Graph / Redes Sociales -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="La Lira App">
-  <meta property="og:title" content="Lista de Alabanzas Compartida - La Lira">
-  <meta property="og:description" content="Abre esta lista de alabanzas en la aplicación oficial La Lira.">
+  <meta property="og:title" content="<?php echo htmlspecialchars($ogTitle); ?>">
+  <meta property="og:description" content="<?php echo htmlspecialchars($ogDesc); ?>">
   <meta property="og:image" content="https://lalira.app/assets/og_preview.png">
   <meta property="og:image:secure_url" content="https://lalira.app/assets/og_preview.png">
   <meta property="og:url" content="https://lalira.app<?php echo htmlspecialchars(parse_url($uri, PHP_URL_PATH)); ?>">
@@ -111,6 +178,7 @@ $deepLink = "lalira://shared-list/" . htmlspecialchars($ownerUid) . "/" . htmlsp
       color: var(--text-primary);
       letter-spacing: -0.02em;
       margin-bottom: 8px;
+      line-height: 1.3;
     }
 
     p {
@@ -211,8 +279,11 @@ $deepLink = "lalira://shared-list/" . htmlspecialchars($ownerUid) . "/" . htmlsp
 
   <script>
     window.onload = function() {
-      // Intentar abrir la app nativa mediante custom scheme
-      window.location.href = '<?php echo $deepLink; ?>';
+      var deepLink = "<?php echo $deepLink; ?>";
+      if (deepLink) {
+        // Redirigir automáticamente a la app si el dispositivo la soporta
+        window.location.href = deepLink;
+      }
     };
   </script>
 </head>
@@ -222,11 +293,11 @@ $deepLink = "lalira://shared-list/" . htmlspecialchars($ownerUid) . "/" . htmlsp
       <img src="/assets/logo.svg" alt="La Lira" class="logo-img">
     </div>
 
-    <h1>Redirigiendo a La Lira...</h1>
+    <h1><?php echo htmlspecialchars($headingText); ?></h1>
     <p>Si la aplicación no se abre automáticamente en tu dispositivo, presiona el botón inferior:</p>
 
     <a href="<?php echo $deepLink; ?>" class="btn-primary">
-      <span>Abrir Lista en la App</span>
+      <span>Abrir Himno en la App</span>
     </a>
 
     <div class="divider">

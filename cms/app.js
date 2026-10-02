@@ -350,95 +350,110 @@ function setupEventListeners() {
   const pdfDiscrepanciesAlert = document.getElementById('pdf-discrepancies-alert');
   const pdfDiscrepanciesList = document.getElementById('pdf-discrepancies-list');
   
-  if (btnExtractPdf && pdfUpload) {
-    btnExtractPdf.addEventListener('click', () => {
-      pdfUpload.click();
-    });
+  const btnExtractCifrado = document.getElementById('btn-extract-cifrado');
+  const cifradoUpload = document.getElementById('cifrado-upload');
+
+  async function processAiExtraction(file, modo) {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('pdf', file);
+    formData.append('modo', modo);
     
-    pdfUpload.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+    let plainLyrics = "";
+    const sourceStanzas = state.activeDraft?.data?.estrofas || state.currentSong?.estrofas || [];
+    plainLyrics = sourceStanzas.filter(s => s.idioma === state.currentCifraLang).map(s => s.texto).join("\n\n");
+    
+    formData.append('letras', plainLyrics);
+    formData.append('cancion_id', state.currentSong ? state.currentSong.id : 'temp');
+    
+    pdfExtractLoading.classList.remove('hidden');
+    pdfDiscrepanciesAlert.classList.add('hidden');
+    pdfDiscrepanciesList.innerHTML = '';
+    
+    try {
+      const response = await fetch(`${API_BASE}/pdf-extract`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${state.token}` },
+        body: formData
+      });
       
-      const formData = new FormData();
-      formData.append('pdf', file);
-      
-      // Collect current plain lyrics from state ONLY for the active language
-      let plainLyrics = "";
-      const sourceStanzas = state.activeDraft?.data?.estrofas || state.currentSong?.estrofas || [];
-      plainLyrics = sourceStanzas.filter(s => s.idioma === state.currentCifraLang).map(s => s.texto).join("\n\n");
-      
-      formData.append('letras', plainLyrics);
-      formData.append('cancion_id', state.currentSong ? state.currentSong.id : 'temp');
-      
-      pdfExtractLoading.classList.remove('hidden');
-      pdfDiscrepanciesAlert.classList.add('hidden');
-      pdfDiscrepanciesList.innerHTML = '';
-      
-      try {
-        const response = await fetch(`${API_BASE}/pdf-extract`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${state.token}` },
-          body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          let errorMsg = data.error || 'Error al procesar PDF';
-          if (data.details) {
-            try {
-              const detailsObj = typeof data.details === 'string' ? JSON.parse(data.details) : data.details;
-              if (detailsObj.error && detailsObj.error.code === 503) {
-                 errorMsg = 'La inteligencia artificial está sobrecargada en este momento. Por favor, intenta de nuevo en unos minutos.';
-              } else if (detailsObj.error && detailsObj.error.message) {
-                 errorMsg += ': ' + detailsObj.error.message;
-              }
-            } catch(e) {
-               // keep default error
+      const data = await response.json();
+      if (!response.ok) {
+        let errorMsg = data.error || 'Error al procesar archivo';
+        if (data.details) {
+          try {
+            const detailsObj = typeof data.details === 'string' ? JSON.parse(data.details) : data.details;
+            if (detailsObj.error && detailsObj.error.code === 503) {
+               errorMsg = 'La inteligencia artificial está sobrecargada en este momento. Por favor, intenta de nuevo en unos minutos.';
+            } else if (detailsObj.error && detailsObj.error.code === 429) {
+               errorMsg = 'Límite de peticiones gratuitas alcanzado (máx. 20 por minuto). Por favor, espera 1 minuto y vuelve a intentarlo.';
+            } else if (detailsObj.error && detailsObj.error.message) {
+               errorMsg += ': ' + detailsObj.error.message;
             }
-          }
-          throw new Error(errorMsg);
+          } catch(e) {}
         }
-        
-        // Update UI
-        document.getElementById('cifra-key').value = data.tonalidad || '';
-        document.getElementById('cifra-bpm').value = data.bpm || '';
-        document.getElementById('cifra-tiempo').value = data.tiempo || '';
-        document.getElementById('cifra-ritmo').value = data.ritmo || '';
-        document.getElementById('chordpro-textarea').value = data.chordpro || '';
-        
-        if (data.pdf_url) {
-          state.currentSong = state.currentSong || {};
-          state.currentSong.partitura_url = data.pdf_url;
-          if (state.activeDraft && state.activeDraft.data) {
-             state.activeDraft.data.partitura_url = data.pdf_url;
-          }
-          btnViewPdf.classList.remove('hidden');
-          btnViewPdf.onclick = () => window.open(data.pdf_url, '_blank');
-        }
-        
-        if (data.discrepancias && data.discrepancias.length > 0) {
-          data.discrepancias.forEach(d => {
-            const li = document.createElement('li');
-            li.textContent = d;
-            pdfDiscrepanciesList.appendChild(li);
-          });
-          pdfDiscrepanciesAlert.classList.remove('hidden');
-          showToast('⚠️ Resultado NO confiable. Resuelve las diferencias.', 'error');
-        } else {
-          showToast('PDF procesado correctamente', 'success');
-        }
-        
-        saveDraftSong();
-        
-      } catch (err) {
-        showToast(err.message, true);
-      } finally {
-        pdfExtractLoading.classList.add('hidden');
-        pdfUpload.value = ''; // Reset
+        throw new Error(errorMsg);
       }
-    });
+      
+      document.getElementById('cifra-key').value = data.tonalidad || '';
+      document.getElementById('cifra-bpm').value = data.bpm || '';
+      document.getElementById('cifra-tiempo').value = data.tiempo || '';
+      document.getElementById('cifra-ritmo').value = data.ritmo || '';
+      document.getElementById('chordpro-textarea').value = data.chordpro || '';
+      
+      if (modo === 'partitura' && data.pdf_url) {
+        state.currentSong = state.currentSong || {};
+        state.currentSong.partitura_url = data.pdf_url;
+        if (state.activeDraft && state.activeDraft.data) {
+           state.activeDraft.data.partitura_url = data.pdf_url;
+        }
+        btnViewPdf.classList.remove('hidden');
+        btnViewPdf.onclick = () => window.open(data.pdf_url, '_blank');
+      }
+      
+      if (data.discrepancias && data.discrepancias.length > 0) {
+        data.discrepancias.forEach(d => {
+          const li = document.createElement('li');
+          li.textContent = d;
+          pdfDiscrepanciesList.appendChild(li);
+        });
+        pdfDiscrepanciesAlert.classList.remove('hidden');
+        showToast('⚠️ Resultado NO confiable. Resuelve las diferencias.', true);
+      } else {
+        showToast('Archivo procesado correctamente', false);
+      }
+      
+      saveDraftSong();
+    } catch (err) {
+      showToast(err.message, true);
+    } finally {
+      pdfExtractLoading.classList.add('hidden');
+      if (pdfUpload) pdfUpload.value = '';
+      if (cifradoUpload) cifradoUpload.value = '';
+    }
   }
+
+  if (btnExtractPdf && pdfUpload) {
+    btnExtractPdf.addEventListener('click', () => pdfUpload.click());
+    pdfUpload.addEventListener('change', (e) => processAiExtraction(e.target.files[0], 'partitura'));
+  }
+  if (btnExtractCifrado && cifradoUpload) {
+    btnExtractCifrado.addEventListener('click', () => cifradoUpload.click());
+    cifradoUpload.addEventListener('change', (e) => processAiExtraction(e.target.files[0], 'cifrado'));
+  }
+  
+  document.addEventListener('paste', (e) => {
+    if (!document.getElementById('cifra-panel').classList.contains('hidden')) {
+      const items = e.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          processAiExtraction(file, 'cifrado');
+          break;
+        }
+      }
+    }
+  });
 
   // Chord Builder Modal Event Listeners
   const closeChordBuilderX = document.getElementById('close-chord-builder-x');
@@ -673,9 +688,13 @@ async function initializeDashboard() {
 
 window.toggleSidebar = function() {
   const container = document.getElementById('app-container');
-  if (!container) return;
+  if (!container) {
+    console.error("No app-container found!");
+    return;
+  }
 
   const isCollapsed = container.classList.contains('sidebar-collapsed') || (window.innerWidth <= 768 && container.classList.contains('show-workspace'));
+  
   if (isCollapsed) {
     window.expandSidebar();
   } else {
@@ -697,6 +716,13 @@ window.collapseSidebar = function() {
   if (label) label.textContent = 'Expandir';
 
   localStorage.setItem('lalira_sidebar_collapsed', 'true');
+  
+  // Debug visual feedback
+  const dbgMsg = document.createElement('div');
+  dbgMsg.textContent = 'Panel Oculto';
+  dbgMsg.style = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:10px;z-index:9999;border-radius:4px;';
+  document.body.appendChild(dbgMsg);
+  setTimeout(() => dbgMsg.remove(), 2000);
 };
 
 window.expandSidebar = function() {
@@ -713,6 +739,13 @@ window.expandSidebar = function() {
   if (label) label.textContent = 'Panel';
 
   localStorage.setItem('lalira_sidebar_collapsed', 'false');
+  
+  // Debug visual feedback
+  const dbgMsg = document.createElement('div');
+  dbgMsg.textContent = 'Panel Mostrado';
+  dbgMsg.style = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:10px;z-index:9999;border-radius:4px;';
+  document.body.appendChild(dbgMsg);
+  setTimeout(() => dbgMsg.remove(), 2000);
 };
 
 function initSidebarState() {
@@ -1204,7 +1237,7 @@ function parseChordProLine(line) {
   if (!hasChords) {
     return {
       type: 'lyrics',
-      tokens: [{ chord: null, text: line }]
+      tokens: [{ chord: null, text: line, rawTextOffset: 0, chordIndex: -1 }]
     };
   }
 
@@ -1215,7 +1248,7 @@ function parseChordProLine(line) {
     if (m.index > currentPos) {
       const text = line.substring(currentPos, m.index);
       if (tokens.length === 0) {
-        tokens.push({ chord: null, text: text });
+        tokens.push({ chord: null, text: text, rawTextOffset: currentPos, chordIndex: -1 });
       } else {
         tokens[tokens.length - 1].text += text;
       }
@@ -1227,7 +1260,10 @@ function parseChordProLine(line) {
 
     tokens.push({
       chord: m.chord,
-      text: textAfterChord
+      text: textAfterChord,
+      rawTextOffset: startOfTextAfterChord,
+      chordIndex: i,
+      rawChordOffset: m.index
     });
 
     currentPos = nextChordPos;
@@ -1249,7 +1285,8 @@ function renderChordProPreview() {
   let html = '';
   let inIntroBlock = false;
 
-  for (let rawLine of lines) {
+  for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+    let rawLine = lines[lineIdx];
     let line = rawLine;
 
     // Handle inline {start_of_intro} and {end_of_intro} tags
@@ -1277,15 +1314,23 @@ function renderChordProPreview() {
     } else if (parsed.type === 'directive') {
       html += `<div style="font-size: 0.75rem; color: var(--color-text-muted); font-family: monospace;">${parsed.text}</div>`;
     } else if (parsed.type === 'lyrics') {
-      let lineHtml = '<div class="preview-line">';
-      for (let token of parsed.tokens) {
+      let lineHtml = `<div class="preview-line" data-line-idx="${lineIdx}">`;
+      for (let tIdx = 0; tIdx < parsed.tokens.length; tIdx++) {
+        let token = parsed.tokens[tIdx];
         let lyricText = token.text || '';
         lyricText = lyricText.replace(/___INTRO_START___/g, '<span class="preview-intro-span"><span class="preview-intro-badge">Intro</span> ');
         lyricText = lyricText.replace(/___INTRO_END___/g, '</span>');
 
-        const chordHtml = token.chord ? `<span class="preview-chord">${token.chord}</span>` : '<span class="preview-chord">&nbsp;</span>';
+        const isDraggable = token.chord ? 'draggable="true"' : '';
+        const dataAttrs = token.chord ? `data-line-idx="${lineIdx}" data-chord-idx="${token.chordIndex}" data-raw-offset="${token.rawChordOffset}"` : '';
+        
+        const chordHtml = token.chord 
+          ? `<span class="preview-chord" ${isDraggable} ${dataAttrs}>${token.chord}</span>` 
+          : '<span class="preview-chord">&nbsp;</span>';
+          
+        const tokenClass = token.chord ? 'preview-token has-chord' : 'preview-token';
         lineHtml += `
-          <div class="preview-token">
+          <div class="${tokenClass}" data-token-idx="${tIdx}" data-raw-text-offset="${token.rawTextOffset}">
             ${chordHtml}
             <span class="preview-lyric">${lyricText}</span>
           </div>
@@ -1301,7 +1346,312 @@ function renderChordProPreview() {
   }
 
   previewContainer.innerHTML = html;
+  
+  // Re-attach Drag and Drop & Nudge Listeners
+  attachChordInteractionListeners();
 }
+
+// --- Chord Interaction Logic (Drag & Drop + Nudge) ---
+
+function attachChordInteractionListeners() {
+  const chords = document.querySelectorAll('.preview-chord[draggable="true"]');
+  const tokens = document.querySelectorAll('.preview-token');
+  const previewContainer = document.getElementById('chords-preview');
+
+  // Nudge Toolbar State
+  let activeNudgeChord = null;
+  
+  // Remove existing toolbars
+  document.querySelectorAll('.chord-nudge-toolbar').forEach(t => t.remove());
+
+  // Restore nudge toolbar if it was open before render
+  if (window.activeNudgeState) {
+    const selector = `.preview-chord[data-line-idx="${window.activeNudgeState.lineIdx}"][data-chord-idx="${window.activeNudgeState.chordIdx}"]`;
+    const chordToRestore = document.querySelector(selector);
+    if (chordToRestore) {
+      // Must define functions before calling, or we defer it.
+      // Wait, openNudgeToolbar is defined below, it's hoisted!
+      setTimeout(() => openNudgeToolbar(chordToRestore), 0);
+    } else {
+      window.activeNudgeState = null;
+    }
+  }
+
+  chords.forEach(chord => {
+    // Desktop Drag & Drop
+    chord.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', JSON.stringify({
+        lineIdx: parseInt(chord.dataset.lineIdx),
+        chordIdx: parseInt(chord.dataset.chordIdx),
+        rawOffset: parseInt(chord.dataset.rawOffset)
+      }));
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => chord.classList.add('dragging'), 0);
+      
+      // Close nudge toolbar if open
+      if (activeNudgeChord) closeNudgeToolbar();
+    });
+
+    chord.addEventListener('dragend', () => {
+      chord.classList.remove('dragging');
+      tokens.forEach(t => t.classList.remove('drag-over'));
+    });
+    
+    // Mobile Tap & Nudge
+    chord.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (activeNudgeChord === chord) return;
+      openNudgeToolbar(chord);
+    });
+  });
+
+  let dragCursor = document.getElementById('drag-cursor-line');
+  if (!dragCursor) {
+    dragCursor = document.createElement('div');
+    dragCursor.id = 'drag-cursor-line';
+    dragCursor.style.position = 'fixed'; // fixed so clientX/clientY map easily
+    dragCursor.style.width = '2px';
+    dragCursor.style.backgroundColor = 'var(--color-primary, red)';
+    dragCursor.style.pointerEvents = 'none';
+    dragCursor.style.display = 'none';
+    dragCursor.style.zIndex = '9999';
+    document.body.appendChild(dragCursor);
+  }
+
+  // Remove old dragover from tokens and instead attach to container
+  // to get precise mouse coordinates for the floating cursor.
+  previewContainer.ondragover = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    let range;
+    if (document.caretRangeFromPoint) {
+      range = document.caretRangeFromPoint(e.clientX, e.clientY);
+    } else if (document.caretPositionFromPoint) {
+      let pos = document.caretPositionFromPoint(e.clientX, e.clientY);
+      if (pos && pos.offsetNode) {
+        range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+        range.collapse(true);
+      }
+    }
+    
+    if (range) {
+      const rect = range.getBoundingClientRect();
+      if (rect) {
+        dragCursor.style.display = 'block';
+        dragCursor.style.left = rect.left + 'px';
+        dragCursor.style.top = (rect.top - 18) + 'px'; // Span upwards to cover chord area
+        dragCursor.style.height = (rect.height + 18) + 'px';
+      }
+    }
+  };
+
+  previewContainer.ondragleave = (e) => {
+    // Only hide if we actually left the container
+    if (!previewContainer.contains(e.relatedTarget)) {
+      dragCursor.style.display = 'none';
+    }
+  };
+
+  previewContainer.ondrop = (e) => {
+    e.preventDefault();
+    dragCursor.style.display = 'none';
+    
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+      const sourceLineIdx = data.lineIdx;
+      const sourceChordIdx = data.chordIdx;
+      
+      let range;
+      if (document.caretRangeFromPoint) {
+        range = document.caretRangeFromPoint(e.clientX, e.clientY);
+      } else if (document.caretPositionFromPoint) {
+        let pos = document.caretPositionFromPoint(e.clientX, e.clientY);
+        if (pos && pos.offsetNode) {
+          range = document.createRange();
+          range.setStart(pos.offsetNode, pos.offset);
+          range.collapse(true);
+        }
+      }
+      
+      if (!range || !range.startContainer) return;
+      
+      const textNode = range.startContainer;
+      const tokenEl = textNode.parentElement ? textNode.parentElement.closest('.preview-token') : null;
+      if (!tokenEl) return;
+      
+      const lineEl = tokenEl.closest('.preview-line');
+      if (!lineEl) return;
+      
+      const targetLineIdx = parseInt(lineEl.dataset.lineIdx);
+      let charOffset = parseInt(tokenEl.dataset.rawTextOffset) || 0;
+      
+      if (textNode.parentElement.classList.contains('preview-lyric')) {
+        charOffset += range.startOffset;
+      }
+      
+      moveChordAbsolute(sourceLineIdx, sourceChordIdx, targetLineIdx, charOffset);
+    } catch (err) {
+      console.error("Drop error", err);
+    }
+  };
+
+  if (!window._hasGlobalChordClickListener) {
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.preview-chord') && !e.target.closest('.chord-nudge-toolbar')) {
+        const openToolbar = document.querySelector('.chord-nudge-toolbar');
+        if (openToolbar) {
+           window.activeNudgeState = null;
+           const chord = openToolbar.closest('.preview-chord');
+           if (chord) chord.classList.remove('selected-chord');
+           openToolbar.remove();
+        }
+      }
+    });
+    window._hasGlobalChordClickListener = true;
+  }
+
+  function openNudgeToolbar(chord) {
+    if (activeNudgeChord && activeNudgeChord !== chord) {
+      closeNudgeToolbar(); // Close if different
+    }
+    
+    activeNudgeChord = chord;
+    chord.classList.add('selected-chord');
+
+    window.activeNudgeState = {
+      lineIdx: parseInt(chord.dataset.lineIdx),
+      chordIdx: parseInt(chord.dataset.chordIdx)
+    };
+
+    if (!chord.querySelector('.chord-nudge-toolbar')) {
+      const toolbar = document.createElement('div');
+      toolbar.className = 'chord-nudge-toolbar';
+      toolbar.innerHTML = `
+        <button type="button" class="chord-nudge-btn" data-dir="-1">←</button>
+        <button type="button" class="chord-nudge-btn" data-dir="1">→</button>
+      `;
+
+      chord.appendChild(toolbar);
+
+      toolbar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const btn = e.target.closest('.chord-nudge-btn');
+        if (!btn) return;
+        const dir = parseInt(btn.dataset.dir);
+        
+        const lineIdx = parseInt(chord.dataset.lineIdx);
+        const chordIdx = parseInt(chord.dataset.chordIdx);
+        nudgeChord(lineIdx, chordIdx, dir);
+      });
+    }
+  }
+
+  function closeNudgeToolbar() {
+    window.activeNudgeState = null;
+    if (activeNudgeChord) {
+      activeNudgeChord.classList.remove('selected-chord');
+      const tb = activeNudgeChord.querySelector('.chord-nudge-toolbar');
+      if (tb) tb.remove();
+      activeNudgeChord = null;
+    }
+  }
+}
+
+function nudgeChord(lineIdx, chordIdx, direction) {
+  const textarea = document.getElementById('chordpro-textarea');
+  const lines = textarea.value.split('\n');
+  let line = lines[lineIdx];
+
+  const regex = /\[([^\]]+)\]/g;
+  let matches = [];
+  let match;
+  while ((match = regex.exec(line)) !== null) {
+    matches.push(match);
+  }
+
+  if (!matches[chordIdx]) return;
+  const m = matches[chordIdx];
+  const chordStr = m[0]; // e.g. "[C]"
+  const startIndex = m.index;
+  const endIndex = m.index + chordStr.length;
+
+  let newLine = line;
+  if (direction === -1) { // Left
+    if (startIndex > 0) {
+      const charLeft = line.substring(startIndex - 1, startIndex);
+      if (charLeft === ']') return; // Hit another chord
+      newLine = line.substring(0, startIndex - 1) + chordStr + charLeft + line.substring(endIndex);
+    } else {
+      return; // Already at start
+    }
+  } else if (direction === 1) { // Right
+    if (endIndex < line.length) {
+      const charRight = line.substring(endIndex, endIndex + 1);
+      if (charRight === '[') return; // Hit another chord
+      newLine = line.substring(0, startIndex) + charRight + chordStr + line.substring(endIndex + 1);
+    } else {
+      return; // Already at end
+    }
+  }
+
+  lines[lineIdx] = newLine;
+  textarea.value = lines.join('\n');
+  textarea.dispatchEvent(new Event('input'));
+}
+
+function moveChordAbsolute(sourceLineIdx, sourceChordIdx, targetLineIdx, rawOffset) {
+  const textarea = document.getElementById('chordpro-textarea');
+  const lines = textarea.value.split('\n');
+  
+  let sourceLine = lines[sourceLineIdx];
+  
+  const regex = /\[([^\]]+)\]/g;
+  let matches = [];
+  let match;
+  while ((match = regex.exec(sourceLine)) !== null) {
+    matches.push(match);
+  }
+
+  if (!matches[sourceChordIdx]) return;
+  const m = matches[sourceChordIdx];
+  const chordStr = m[0];
+  
+  // 1. Remove chord from source
+  let newSourceLine = sourceLine.substring(0, m.index) + sourceLine.substring(m.index + chordStr.length);
+  
+  if (sourceLineIdx === targetLineIdx) {
+    // If same line, adjust target offset if it was after the removed chord
+    if (rawOffset > m.index) {
+      // The text shifted left by chordStr.length
+      // But wait! rawOffset is based on the original string's rawTextOffset which ALREADY accounted for chords to the left?
+      // Actually, rawTextOffset in tokens is based on the original string WITH chords.
+      // If we insert into the new string, we need to map the old offset to the new offset.
+      rawOffset -= chordStr.length; 
+    }
+    
+    // Safety clamp
+    if (rawOffset < 0) rawOffset = 0;
+    if (rawOffset > newSourceLine.length) rawOffset = newSourceLine.length;
+    
+    // Insert into same line
+    lines[sourceLineIdx] = newSourceLine.substring(0, rawOffset) + chordStr + newSourceLine.substring(rawOffset);
+  } else {
+    lines[sourceLineIdx] = newSourceLine;
+    
+    let targetLine = lines[targetLineIdx];
+    // Safety clamp
+    if (rawOffset < 0) rawOffset = 0;
+    if (rawOffset > targetLine.length) rawOffset = targetLine.length;
+    
+    lines[targetLineIdx] = targetLine.substring(0, rawOffset) + chordStr + targetLine.substring(rawOffset);
+  }
+  
+  textarea.value = lines.join('\n');
+  textarea.dispatchEvent(new Event('input'));
+}
+
 
 // --- Stanzas Tab management ---
 
