@@ -327,6 +327,13 @@ function setupEventListeners() {
       mobileNavModal.classList.add('hidden');
     });
   }
+  if (mobileNavModal) {
+    mobileNavModal.addEventListener('click', (e) => {
+      if (e.target === mobileNavModal) {
+        mobileNavModal.classList.add('hidden');
+      }
+    });
+  }
   if (mobileViewUsersBtn && mobileNavModal) {
     mobileViewUsersBtn.addEventListener('click', () => {
       mobileNavModal.classList.add('hidden');

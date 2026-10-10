@@ -2349,47 +2349,98 @@ input:focus, select:focus, textarea:focus {
 
   /* Header mobile optimization */
   .cms-header {
-    padding: 0 12px;
+    padding: 0 10px;
     height: 56px;
     flex-wrap: nowrap;
-    overflow: visible;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    overflow: hidden;
+    gap: 6px;
   }
 
   .header-logo {
-    gap: 8px;
+    gap: 6px;
+    flex: 0 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .logo-img {
+    width: 28px;
+    height: 28px;
     flex-shrink: 0;
   }
 
+  .logo-text {
+    min-width: 0;
+    overflow: hidden;
+  }
+
   .logo-text h1 {
-    font-size: var(--text-md);
+    font-size: 0.95rem;
     line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .logo-text span {
     display: none !important;
   }
 
+  .toggle-sidebar-btn {
+    margin-left: 2px;
+    padding: 6px 8px;
+    min-height: 34px;
+    flex-shrink: 0;
+  }
+
+  #toggle-sidebar-label {
+    display: none !important; /* Oculta el texto 'Panel' en móvil para liberar espacio */
+  }
+
   .db-status-badge {
-    padding: 4px 8px;
-    font-size: var(--text-xs);
-    white-space: nowrap;
+    display: none !important; /* Oculta la badge de versión en la barra móvil para no empujar botones fuera de pantalla; se muestra dentro del menú de 3 puntos */
   }
 
   .header-actions {
-    gap: 6px;
+    gap: 8px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
+    margin-left: auto;
   }
 
   .header-actions .btn {
-    min-height: 34px;
+    min-height: 36px;
     padding: 6px 10px;
     font-size: var(--text-sm);
   }
 
+  #publish-btn {
+    display: inline-flex !important;
+    min-height: 36px;
+    padding: 6px 12px;
+    flex-shrink: 0;
+  }
+
   #publish-btn .publish-label {
     display: none;
+  }
+
+  #mobile-menu-toggle-btn {
+    display: inline-flex !important;
+    min-height: 36px;
+    width: 38px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
   /* Mobile Dashboard Optimization */
