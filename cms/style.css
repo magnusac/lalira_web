@@ -34,6 +34,15 @@
   --radius-sm: 6px;
   --radius-md: 12px;
   --radius-lg: 18px;
+
+  /* Modular Typography Scale */
+  --text-xs: 0.75rem;     /* 12px - Badges, micro-metadata (WCAG safe minimum) */
+  --text-sm: 0.8125rem;   /* 13px - Subtitles, helper text, form labels */
+  --text-base: 0.875rem;  /* 14px - Primary UI text, buttons, body inputs */
+  --text-md: 0.9375rem;   /* 15px - Card titles, prominent inputs */
+  --text-lg: 1.125rem;    /* 18px - Section headers, card titles */
+  --text-xl: 1.375rem;    /* 22px - Modal headings, editor title */
+  --text-2xl: 1.625rem;   /* 26px - Main page titles, dashboard header */
 }
 
 * {
@@ -1254,8 +1263,9 @@ input:focus, select:focus, textarea:focus {
 .btn {
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 0.85rem;
-  padding: 10px 16px;
+  font-size: var(--text-base);
+  padding: 8px 16px;
+  min-height: 38px;
   border-radius: var(--radius-sm);
   border: none;
   cursor: pointer;
@@ -1264,20 +1274,23 @@ input:focus, select:focus, textarea:focus {
   justify-content: center;
   gap: 8px;
   transition: all 0.2s ease;
+  line-height: 1.2;
 }
 
 .btn-icon {
   width: 16px;
   height: 16px;
+  flex-shrink: 0;
 }
 
 .btn-primary {
   background: var(--color-primary);
-  color: var(--color-text-bright);
+  color: #ffffff !important;
 }
 
 .btn-primary:hover {
   background: var(--color-primary-hover);
+  color: #ffffff !important;
   box-shadow: 0 0 10px rgba(192, 57, 43, 0.4);
 }
 
@@ -1289,25 +1302,28 @@ input:focus, select:focus, textarea:focus {
 
 .btn-secondary:hover {
   background: var(--color-secondary-hover);
+  color: var(--color-text-bright);
 }
 
 .btn-success {
   background: var(--color-success);
-  color: var(--color-text-bright);
+  color: #ffffff !important;
 }
 
 .btn-success:hover {
   background: var(--color-success-hover);
+  color: #ffffff !important;
   box-shadow: 0 0 10px rgba(46, 204, 113, 0.4);
 }
 
 .btn-danger {
   background: var(--color-danger);
-  color: var(--color-text-bright);
+  color: #ffffff !important;
 }
 
 .btn-danger:hover {
   background: var(--color-danger-hover);
+  color: #ffffff !important;
   box-shadow: 0 0 10px rgba(231, 76, 60, 0.4);
 }
 
@@ -1317,7 +1333,7 @@ input:focus, select:focus, textarea:focus {
   color: var(--color-primary);
   font-weight: 600;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
 }
 
 .btn-text:hover {
@@ -1330,7 +1346,15 @@ input:focus, select:focus, textarea:focus {
 
 .btn-sm {
   padding: 6px 12px;
-  font-size: 0.75rem;
+  min-height: 32px;
+  font-size: var(--text-sm);
+}
+
+.btn-touch {
+  min-height: 44px;
+  padding: 10px 18px;
+  font-size: var(--text-base);
+  border-radius: var(--radius-sm);
 }
 
 /* Toast Notification styling */
@@ -1681,16 +1705,38 @@ input:focus, select:focus, textarea:focus {
   overflow-y: auto;
 }
 
+.dashboard-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-header-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .dashboard-header h2 {
   font-family: var(--font-title);
-  font-size: 1.75rem;
+  font-size: var(--text-2xl);
   font-weight: 700;
   color: var(--color-text-bright);
 }
 
 .dashboard-subtitle {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
+}
+
+.dashboard-mobile-tabs {
+  display: none;
 }
 
 .dashboard-stats-grid {
@@ -2155,6 +2201,87 @@ input:focus, select:focus, textarea:focus {
   flex: 1;
 }
 
+/* Mobile Navigation & Admin Options Modal */
+.mobile-nav-card {
+  max-width: 380px !important;
+  width: 92%;
+  padding: 24px !important;
+  gap: 16px !important;
+  margin: auto;
+}
+
+.mobile-nav-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-glass);
+  padding-bottom: 12px;
+}
+
+.mobile-nav-user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-user-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: hsla(5, 75%, 52%, 0.12);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mobile-user-avatar svg {
+  width: 22px;
+  height: 22px;
+}
+
+.mobile-user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobile-user-details h3 {
+  font-family: var(--font-title);
+  font-size: var(--text-md);
+  color: var(--color-text-bright);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.mobile-db-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  color: var(--color-text-normal);
+  margin-bottom: 14px;
+}
+
+.mobile-nav-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-nav-menu-list .btn {
+  justify-content: flex-start;
+  padding: 12px 16px;
+  font-size: var(--text-base);
+  min-height: 46px;
+  border-radius: var(--radius-sm);
+}
+
 /* ─────────────────────────────────────────────────────────────
    MEDIA QUERIES FOR TABLETS & MOBILE
    ───────────────────────────────────────────────────────────── */
@@ -2223,9 +2350,9 @@ input:focus, select:focus, textarea:focus {
   /* Header mobile optimization */
   .cms-header {
     padding: 0 12px;
-    height: 60px;
+    height: 56px;
     flex-wrap: nowrap;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .header-logo {
@@ -2234,8 +2361,8 @@ input:focus, select:focus, textarea:focus {
   }
 
   .logo-text h1 {
-    font-size: 1.05rem;
-    line-height: 1;
+    font-size: var(--text-md);
+    line-height: 1.1;
   }
 
   .logo-text span {
@@ -2244,26 +2371,147 @@ input:focus, select:focus, textarea:focus {
 
   .db-status-badge {
     padding: 4px 8px;
-    font-size: 0.72rem;
+    font-size: var(--text-xs);
     white-space: nowrap;
   }
 
   .header-actions {
     gap: 6px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
   }
 
   .header-actions .btn {
+    min-height: 34px;
     padding: 6px 10px;
-    font-size: 0.75rem;
-  }
-
-  .header-actions .admin-only:not(#publish-btn) {
-    display: none !important;
+    font-size: var(--text-sm);
   }
 
   #publish-btn .publish-label {
     display: none;
+  }
+
+  /* Mobile Dashboard Optimization */
+  .dashboard-panel {
+    padding: 16px 14px;
+    gap: 16px;
+  }
+
+  .dashboard-header-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .dashboard-header h2 {
+    font-size: var(--text-xl);
+  }
+
+  .dashboard-subtitle {
+    font-size: var(--text-xs);
+  }
+
+  .dashboard-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .stat-card.total-songs-card {
+    grid-column: span 2;
+  }
+
+  .stat-card {
+    padding: 12px 10px;
+    gap: 10px;
+  }
+
+  .stat-icon-wrapper {
+    width: 34px;
+    height: 34px;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  .stat-label {
+    font-size: var(--text-xs);
+  }
+
+  /* Mobile Segmented Tabs for Dashboard Lists */
+  .dashboard-mobile-tabs {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dashboard-tab-btn {
+    flex: 1;
+    min-width: fit-content;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-glass);
+    background: var(--bg-panel);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-normal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .dashboard-tab-btn.active {
+    background: var(--color-primary);
+    color: #ffffff;
+    border-color: var(--color-primary);
+  }
+
+  .dashboard-tab-btn.active .tab-badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+  }
+
+  /* Mobile list filtering according to active mobile tab */
+  .dashboard-content-grid.mobile-tab-pending .dashboard-list-card:not(#dash-card-pending),
+  .dashboard-content-grid.mobile-tab-drafts .dashboard-list-card:not(#dash-card-drafts),
+  .dashboard-content-grid.mobile-tab-missing .dashboard-list-card:not(#dash-card-missing),
+  .dashboard-content-grid.mobile-tab-with-chords .dashboard-list-card:not(#dash-card-with) {
+    display: none !important;
+  }
+
+  .dashboard-list-card {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .dashboard-list-content {
+    max-height: none;
+    overflow-y: visible;
+    padding-right: 0;
+  }
+
+  .dashboard-item-card {
+    padding: 12px;
+    gap: 10px;
+    min-height: 52px;
+  }
+
+  .dashboard-item-title {
+    font-size: var(--text-sm);
+    line-height: 1.3;
+  }
+
+  .dashboard-item-actions .btn {
+    min-height: 36px;
+    padding: 6px 14px;
+    font-size: var(--text-sm);
   }
 
   /* Mobile Editor Header */
@@ -2283,14 +2531,14 @@ input:focus, select:focus, textarea:focus {
   }
 
   .song-title-inputs h2 {
-    font-size: 1.1rem;
+    font-size: var(--text-lg);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .editor-header-actions {
-    display: none; /* Replaced by bottom action bar on mobile */
+    display: none; /* Handled by bottom mobile-floating-actions */
   }
 
   .song-navigation-group {
@@ -2307,13 +2555,47 @@ input:focus, select:focus, textarea:focus {
 
   .tab-link {
     padding: 12px 14px;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     flex-shrink: 0;
   }
 
   .editor-content-container {
     padding: 14px;
-    padding-bottom: 70px; /* Space for mobile floating actions */
+    padding-bottom: 76px; /* Space for mobile floating actions */
+  }
+
+  /* Mobile Bottom Action Bar */
+  .mobile-floating-actions {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .mobile-floating-actions .btn-touch {
+    flex: 1;
+    min-height: 46px;
+    font-size: var(--text-sm);
+  }
+
+  #mobile-delete-song-btn {
+    flex: 0 0 46px;
+    max-width: 46px;
+    padding: 0;
+  }
+
+  /* Modals and Tables on Mobile */
+  .modal-card {
+    width: 95%;
+    max-height: 90vh;
+    padding: 20px 16px;
+  }
+
+  .user-table-container, .modal-body {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .user-table, .audit-table {
+    min-width: 550px;
   }
 
   /* ChordPro Layout Mobile Switch */

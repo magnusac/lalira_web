@@ -286,6 +286,92 @@ function setupEventListeners() {
     mobileSubmitApprovalBtn.addEventListener('click', () => saveDraftSong(true));
   }
 
+  // Mobile Dashboard Back Button
+  const dashboardBackBtn = document.getElementById('dashboard-back-btn');
+  if (dashboardBackBtn) {
+    dashboardBackBtn.addEventListener('click', showMobileSidebar);
+  }
+
+  // Mobile Dashboard Tabs
+  const dashTabs = document.querySelectorAll('.dashboard-tab-btn');
+  const dashGrid = document.getElementById('dashboard-content-grid');
+  dashTabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      dashTabs.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tabName = btn.getAttribute('data-dash-tab');
+      if (dashGrid) {
+        dashGrid.classList.remove('mobile-tab-pending', 'mobile-tab-drafts', 'mobile-tab-missing', 'mobile-tab-with-chords');
+        dashGrid.classList.add(`mobile-tab-${tabName}`);
+      }
+    });
+  });
+
+  // Mobile Header Navigation Modal
+  const mobileMenuToggleBtn = document.getElementById('mobile-menu-toggle-btn');
+  const mobileNavModal = document.getElementById('mobile-nav-modal');
+  const closeMobileNavBtn = document.getElementById('close-mobile-nav-btn');
+  const mobileViewUsersBtn = document.getElementById('mobile-view-users-btn');
+  const mobileViewAuditBtn = document.getElementById('mobile-view-audit-btn');
+  const mobilePublishBtn = document.getElementById('mobile-publish-btn');
+  const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
+
+  if (mobileMenuToggleBtn && mobileNavModal) {
+    mobileMenuToggleBtn.addEventListener('click', () => {
+      syncRoleVisibility();
+      mobileNavModal.classList.remove('hidden');
+    });
+  }
+  if (closeMobileNavBtn && mobileNavModal) {
+    closeMobileNavBtn.addEventListener('click', () => {
+      mobileNavModal.classList.add('hidden');
+    });
+  }
+  if (mobileViewUsersBtn && mobileNavModal) {
+    mobileViewUsersBtn.addEventListener('click', () => {
+      mobileNavModal.classList.add('hidden');
+      openUsersModalView();
+    });
+  }
+  if (mobileViewAuditBtn && mobileNavModal) {
+    mobileViewAuditBtn.addEventListener('click', () => {
+      mobileNavModal.classList.add('hidden');
+      openAuditModalView();
+    });
+  }
+  if (mobilePublishBtn && mobileNavModal) {
+    mobilePublishBtn.addEventListener('click', () => {
+      mobileNavModal.classList.add('hidden');
+      triggerPublishAll();
+    });
+  }
+  if (mobileLogoutBtn && mobileNavModal) {
+    mobileLogoutBtn.addEventListener('click', () => {
+      mobileNavModal.classList.add('hidden');
+      handleLogout();
+    });
+  }
+
+  // Mobile Editor Admin Buttons
+  const mobileApproveBtn = document.getElementById('mobile-approve-btn');
+  if (mobileApproveBtn) {
+    mobileApproveBtn.addEventListener('click', () => {
+      if (approveBtn) approveBtn.click();
+    });
+  }
+  const mobileRejectBtn = document.getElementById('mobile-reject-btn');
+  if (mobileRejectBtn) {
+    mobileRejectBtn.addEventListener('click', () => {
+      if (rejectBtn) rejectBtn.click();
+    });
+  }
+  const mobileDeleteSongBtn = document.getElementById('mobile-delete-song-btn');
+  if (mobileDeleteSongBtn) {
+    mobileDeleteSongBtn.addEventListener('click', () => {
+      if (deleteSongBtn) deleteSongBtn.click();
+    });
+  }
+
   // Segmented View Toggle (Editor vs Preview on mobile)
   const btnShowEditor = document.getElementById('btn-show-editor');
   const btnShowPreview = document.getElementById('btn-show-preview');
@@ -420,7 +506,8 @@ function setupEventListeners() {
         pdfDiscrepanciesAlert.classList.remove('hidden');
         showToast('⚠️ Resultado NO confiable. Resuelve las diferencias.', true);
       } else {
-        showToast('Archivo procesado correctamente', false);
+        const modelTag = data.modelo_usado ? ` (${data.modelo_usado.replace('models/', '')})` : '';
+        showToast('Archivo procesado correctamente' + modelTag, false);
       }
       
       saveDraftSong();
@@ -674,6 +761,20 @@ function syncRoleVisibility() {
   document.querySelectorAll('.admin-only').forEach(el => {
     el.classList.toggle('hidden', !isAdmin);
   });
+
+  const mobileUserName = document.getElementById('mobile-user-name');
+  const mobileUserRole = document.getElementById('mobile-user-role');
+  const mobileVersionLabel = document.getElementById('mobile-version-label');
+  if (state.user) {
+    if (mobileUserName) mobileUserName.textContent = state.user.nombre || state.user.email || 'Usuario';
+    if (mobileUserRole) {
+      mobileUserRole.textContent = isAdmin ? 'Admin' : 'Editor';
+      mobileUserRole.className = `badge-role ${isAdmin ? 'admin' : 'editor'}`;
+    }
+  }
+  if (mobileVersionLabel && versionLabel) {
+    mobileVersionLabel.textContent = versionLabel.textContent;
+  }
 }
 
 async function initializeDashboard() {
@@ -716,13 +817,6 @@ window.collapseSidebar = function() {
   if (label) label.textContent = 'Expandir';
 
   localStorage.setItem('lalira_sidebar_collapsed', 'true');
-  
-  // Debug visual feedback
-  const dbgMsg = document.createElement('div');
-  dbgMsg.textContent = 'Panel Oculto';
-  dbgMsg.style = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:10px;z-index:9999;border-radius:4px;';
-  document.body.appendChild(dbgMsg);
-  setTimeout(() => dbgMsg.remove(), 2000);
 };
 
 window.expandSidebar = function() {
@@ -739,13 +833,6 @@ window.expandSidebar = function() {
   if (label) label.textContent = 'Panel';
 
   localStorage.setItem('lalira_sidebar_collapsed', 'false');
-  
-  // Debug visual feedback
-  const dbgMsg = document.createElement('div');
-  dbgMsg.textContent = 'Panel Mostrado';
-  dbgMsg.style = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:10px;z-index:9999;border-radius:4px;';
-  document.body.appendChild(dbgMsg);
-  setTimeout(() => dbgMsg.remove(), 2000);
 };
 
 function initSidebarState() {
@@ -971,6 +1058,15 @@ window.loadSong = async function(songId) {
     const deleteSongBtn = document.getElementById('delete-song-btn');
     if (deleteSongBtn) {
       deleteSongBtn.classList.toggle('hidden', !(isAdmin && state.currentSongId));
+    }
+
+    const mobileAdminApprovalActions = document.getElementById('mobile-admin-approval-actions');
+    if (mobileAdminApprovalActions) {
+      mobileAdminApprovalActions.classList.toggle('hidden', !(isAdmin && isPending));
+    }
+    const mobileDeleteBtn = document.getElementById('mobile-delete-song-btn');
+    if (mobileDeleteBtn) {
+      mobileDeleteBtn.classList.toggle('hidden', !(isAdmin && state.currentSongId));
     }
 
     // Inputs population
@@ -2374,6 +2470,15 @@ window.showDashboard = function(forceWorkspace = false) {
   if (pendingCountBadge) pendingCountBadge.textContent = pendingList.length;
   if (missingChordsCountBadge) missingChordsCountBadge.textContent = missingChordsList.length;
   if (withChordsCountBadge) withChordsCountBadge.textContent = withChordsList.length;
+
+  const dashTabPendingBadge = document.getElementById('dash-tab-pending-badge');
+  const dashTabDraftsBadge = document.getElementById('dash-tab-drafts-badge');
+  const dashTabMissingBadge = document.getElementById('dash-tab-missing-badge');
+  const dashTabWithBadge = document.getElementById('dash-tab-with-badge');
+  if (dashTabPendingBadge) dashTabPendingBadge.textContent = pendingList.length;
+  if (dashTabDraftsBadge) dashTabDraftsBadge.textContent = draftsList.length;
+  if (dashTabMissingBadge) dashTabMissingBadge.textContent = missingChordsList.length;
+  if (dashTabWithBadge) dashTabWithBadge.textContent = withChordsList.length;
   
   // Render Pending List
   const pendingContainer = document.getElementById('dashboard-pending-list');

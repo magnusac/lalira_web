@@ -53,22 +53,25 @@
       </button>
     </div>
     <div class="header-actions">
-      <button id="view-users-btn" class="btn btn-secondary admin-only">
+      <button id="view-users-btn" class="btn btn-secondary admin-only desktop-only">
         Gestionar Usuarios
       </button>
-      <button id="view-audit-btn" class="btn btn-secondary admin-only">
+      <button id="view-audit-btn" class="btn btn-secondary admin-only desktop-only">
         Ver Auditoría
       </button>
       <div class="db-status-badge">
         <span class="status-dot"></span>
         <span id="version-label">Cargando versión...</span>
       </div>
-      <button id="publish-btn" class="btn btn-primary btn-publish admin-only">
+      <button id="publish-btn" class="btn btn-primary btn-publish admin-only" title="Publicar Base de Datos">
         <svg viewBox="0 0 24 24" class="btn-icon"><path fill="currentColor" d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
         <span class="publish-label">Publicar DB</span>
       </button>
-      <button id="logout-btn" class="btn btn-secondary btn-logout" title="Cerrar Sesión">
+      <button id="logout-btn" class="btn btn-secondary btn-logout desktop-only" title="Cerrar Sesión">
         Salir
+      </button>
+      <button id="mobile-menu-toggle-btn" class="btn btn-secondary btn-sm mobile-only" aria-label="Menú de opciones" title="Menú de opciones">
+        <svg viewBox="0 0 24 24" class="btn-icon"><path fill="currentColor" d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       </button>
     </div>
   </header>
@@ -81,7 +84,7 @@
           <svg viewBox="0 0 24 24" class="btn-icon"><path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
           Inicio
         </button>
-        <button id="add-song-btn" class="btn btn-primary" style="padding: 0 16px; border-radius: var(--radius-md);" title="Nueva Alabanza">
+        <button id="add-song-btn" class="btn btn-primary" title="Nueva Alabanza">
           + Nueva
         </button>
       </div>
@@ -132,8 +135,15 @@
       <!-- Dashboard Panel -->
       <div id="dashboard-panel" class="dashboard-panel">
         <div class="dashboard-header">
-          <h2>Resumen de Actividad</h2>
-          <p class="dashboard-subtitle" id="dashboard-date">Cargando fecha...</p>
+          <div class="dashboard-header-top">
+            <button type="button" id="dashboard-back-btn" class="btn btn-secondary btn-sm mobile-only" title="Volver al catálogo de alabanzas">
+              ← Alabanzas
+            </button>
+            <div class="dashboard-title-group">
+              <h2>Resumen de Actividad</h2>
+              <p class="dashboard-subtitle" id="dashboard-date">Cargando fecha...</p>
+            </div>
+          </div>
         </div>
 
         <!-- Dashboard Summary Grid -->
@@ -189,10 +199,26 @@
           </div>
         </div>
 
+        <!-- Mobile Segmented Tabs for Dashboard Columns -->
+        <div class="dashboard-mobile-tabs mobile-only" id="dashboard-mobile-tabs">
+          <button type="button" class="dashboard-tab-btn active" data-dash-tab="pending">
+            Pendientes <span class="tab-badge badge-warning" id="dash-tab-pending-badge">0</span>
+          </button>
+          <button type="button" class="dashboard-tab-btn" data-dash-tab="drafts">
+            Borradores <span class="tab-badge badge-info" id="dash-tab-drafts-badge">0</span>
+          </button>
+          <button type="button" class="dashboard-tab-btn" data-dash-tab="missing">
+            Sin Cifra <span class="tab-badge badge-danger" id="dash-tab-missing-badge">0</span>
+          </button>
+          <button type="button" class="dashboard-tab-btn" data-dash-tab="with-chords">
+            Con Cifra <span class="tab-badge badge-success" id="dash-tab-with-badge">0</span>
+          </button>
+        </div>
+
         <!-- Dashboard Content Grid -->
-        <div class="dashboard-content-grid">
+        <div class="dashboard-content-grid mobile-tab-pending" id="dashboard-content-grid">
           <!-- Col 1: Pending Approvals -->
-          <div class="dashboard-list-card">
+          <div class="dashboard-list-card" id="dash-card-pending">
             <div class="list-card-header">
               <h3>Pendientes de Aprobación</h3>
               <span class="badge badge-warning" id="pending-count-badge">0</span>
@@ -203,7 +229,7 @@
           </div>
 
           <!-- Col 2: Recent Drafts -->
-          <div class="dashboard-list-card">
+          <div class="dashboard-list-card" id="dash-card-drafts">
             <div class="list-card-header">
               <h3>Borradores Recientes</h3>
               <span class="badge badge-info" id="drafts-count-badge">0</span>
@@ -214,7 +240,7 @@
           </div>
 
           <!-- Col 3: Missing Chords -->
-          <div class="dashboard-list-card">
+          <div class="dashboard-list-card" id="dash-card-missing">
             <div class="list-card-header">
               <h3>Alabanzas Sin Cifrado</h3>
               <span class="badge badge-danger" id="missing-chords-count-badge">0</span>
@@ -225,7 +251,7 @@
           </div>
 
           <!-- Col 4: With Chords -->
-          <div class="dashboard-list-card">
+          <div class="dashboard-list-card" id="dash-card-with">
             <div class="list-card-header">
               <h3>Alabanzas Con Cifrado</h3>
               <span class="badge badge-success" id="with-chords-count-badge">0</span>
@@ -267,10 +293,10 @@
           </div>
           
           <div class="song-navigation-group" style="display: flex; gap: 8px; align-items: center; margin-left: 16px; margin-right: auto;">
-            <button id="prev-song-btn" class="btn btn-secondary btn-sm" style="height: 32px;" title="Alabanza Anterior">
+            <button id="prev-song-btn" class="btn btn-secondary btn-sm" title="Alabanza Anterior">
               &lt; Anterior
             </button>
-            <button id="next-song-btn" class="btn btn-secondary btn-sm" style="height: 32px;" title="Alabanza Siguiente">
+            <button id="next-song-btn" class="btn btn-secondary btn-sm" title="Alabanza Siguiente">
               Siguiente &gt;
             </button>
           </div>
@@ -633,8 +659,13 @@
         
         <!-- Mobile Sticky Bottom Action Bar -->
         <div class="mobile-floating-actions mobile-only" id="mobile-floating-actions">
-          <button id="mobile-save-draft-btn" class="btn btn-secondary btn-sm">💾 Guardar</button>
-          <button id="mobile-submit-approval-btn" class="btn btn-primary btn-sm">🚀 Enviar</button>
+          <button type="button" id="mobile-save-draft-btn" class="btn btn-secondary btn-touch">💾 Guardar</button>
+          <button type="button" id="mobile-submit-approval-btn" class="btn btn-primary btn-touch">🚀 Enviar</button>
+          <div id="mobile-admin-approval-actions" class="mobile-admin-actions admin-only hidden" style="display: flex; gap: 8px; flex: 1;">
+            <button type="button" id="mobile-approve-btn" class="btn btn-success btn-touch" title="Aprobar borrador">✅ Aprobar</button>
+            <button type="button" id="mobile-reject-btn" class="btn btn-danger btn-touch" title="Rechazar">❌ Rechazar</button>
+          </div>
+          <button type="button" id="mobile-delete-song-btn" class="btn btn-danger btn-touch admin-only hidden" title="Eliminar Alabanza">🗑️</button>
         </div>
       </div>
     </main>
@@ -889,6 +920,48 @@
     </div>
   </div>
 
-  <script type="module" src="./app.js?v=2.1.3"></script>
+  <!-- Modal for Mobile Navigation & Admin Actions -->
+  <div id="mobile-nav-modal" class="modal-overlay hidden">
+    <div class="modal-card mobile-nav-card">
+      <div class="modal-header mobile-nav-header">
+        <div class="mobile-nav-user-info">
+          <div class="mobile-user-avatar">
+            <svg viewBox="0 0 24 24" class="btn-icon"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </div>
+          <div class="mobile-user-details">
+            <h3 id="mobile-user-name">Usuario</h3>
+            <span id="mobile-user-role" class="badge-role editor">Editor</span>
+          </div>
+        </div>
+        <button type="button" id="close-mobile-nav-btn" class="btn btn-secondary btn-sm" aria-label="Cerrar modal">✕</button>
+      </div>
+      <div class="modal-body mobile-nav-body">
+        <div class="mobile-db-info">
+          <span class="status-dot"></span>
+          <span id="mobile-version-label">Cargando versión...</span>
+        </div>
+        <div class="mobile-nav-menu-list">
+          <button type="button" id="mobile-view-users-btn" class="btn btn-secondary w-full admin-only">
+            <svg viewBox="0 0 24 24" class="btn-icon"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            Gestionar Usuarios
+          </button>
+          <button type="button" id="mobile-view-audit-btn" class="btn btn-secondary w-full admin-only">
+            <svg viewBox="0 0 24 24" class="btn-icon"><path fill="currentColor" d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+            Ver Auditoría
+          </button>
+          <button type="button" id="mobile-publish-btn" class="btn btn-primary w-full admin-only">
+            <svg viewBox="0 0 24 24" class="btn-icon"><path fill="currentColor" d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+            Publicar Base de Datos
+          </button>
+          <button type="button" id="mobile-logout-btn" class="btn btn-secondary w-full mobile-logout-btn">
+            <svg viewBox="0 0 24 24" class="btn-icon"><path fill="currentColor" d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js?v=2.2.0"></script>
 </body>
 </html>

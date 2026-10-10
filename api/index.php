@@ -633,6 +633,57 @@ function getProductionSong($dbCatalog, $songId) {
     return $song;
 }
 
+function call_gemini_with_fallback($payload, $apiKey, $primaryModel = 'gemini-3.8-flash', $fallbackModel = 'gemini-3.6-flash') {
+    $models = array_unique([$primaryModel, $fallbackModel]);
+    $lastResponse = null;
+    $lastHttpCode = 0;
+    
+    foreach ($models as $model) {
+        $maxRetries = 2;
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/" . $model . ":generateContent?key=" . $apiKey;
+            
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            $lastResponse = $response;
+            $lastHttpCode = $httpCode;
+            
+            if ($httpCode === 200) {
+                return [
+                    'success' => true,
+                    'response' => $response,
+                    'model' => $model,
+                    'attempts' => $attempt
+                ];
+            }
+            
+            // Retry on 503 (Unavailable) or 429 (Rate limit)
+            if (in_array($httpCode, [429, 503]) && $attempt < $maxRetries) {
+                usleep(1500000 * $attempt); // 1.5s, 3s backoff
+                continue;
+            }
+            
+            break;
+        }
+    }
+    
+    return [
+        'success' => false,
+        'response' => $lastResponse,
+        'http_code' => $lastHttpCode
+    ];
+}
+
 // POST /pdf-extract
 if ($path === '/pdf-extract' && $request_method === 'POST') {
     $user = require_auth();
@@ -669,123 +720,58 @@ if ($path === '/pdf-extract' && $request_method === 'POST') {
         $prompt = "Analiza la imagen o documento adjunto que contiene un cifrado de acordes sobre la letra de una canción.
 Toma el texto plano proporcionado e inserta los acordes en formato ChordPro (ej. `[Am]`) alineándolos exactamente sobre las palabras donde caen en la imagen.
 
-REGLAS ESTRICTAS E IRROMPIBLES:
-0. CADENA DE PENSAMIENTO: Llena primero el campo 'analisis_silabico' en el JSON analizando dónde cae cada acorde sobre cada palabra en la foto.
-1. NO modifiques ni una sola palabra del texto plano proporcionado. Úsalo como base estricta.
+REGLAS ESTRICTAS DE ALINEACIÓN Y EXTRACCIÓN:
+0. CADENA DE PENSAMIENTO: Llena el campo 'analisis_silabico' con un mapeo conciso por línea de cada acorde a su palabra correspondiente.
+1. TEXTO INMUTABLE: NO agregues, borres ni modifiques ninguna palabra del texto plano proporcionado. Úsalo como base estricta.
 2. TRADUCCIÓN A SISTEMA AMERICANO: Si los acordes en la imagen están en notación latina (Do, Re, Mim, Sol#), DEBES convertirlos automáticamente a notación americana (C, D, Em, G#) en tu salida.
-3. Encapsula las extensiones de acordes en paréntesis (ej. si dice Cmaj7, escribe `[C(maj7)]`).
-4. METADATOS VACÍOS: A diferencia de las partituras, en estos cifrados es probable que no esté escrito el tempo, BPM, compás o tonalidad. Si NO están explícitamente escritos en la imagen, DEJA ESOS CAMPOS VACÍOS (\"\"). NO alucines ni inventes un ritmo o BPM.
-5. Si el documento usa guiones para separar acordes de paso, ignóralos y posiciona el acorde en la sílaba correcta o al final con espacio.
+3. Encapsula las extensiones de acordes en paréntesis (ej. si dice Cmaj7, escribe `[C(maj7)]`). Inversiones con barra (ej. `[G/B]`).
+4. METADATOS VACÍOS: Si NO están explícitamente escritos en la imagen, DEJA ESOS CAMPOS VACÍOS (\"\" o 0). NO inventes ritmos ni BPMs.
+5. ALINEACIÓN: Inserta cada acorde directamente antes de la sílaba o palabra sobre la que está visualmente alineado en la imagen.
 
 Texto Plano proporcionado:
 " . $letras;
     } else {
-        $prompt = "Analiza el PDF adjunto (una partitura) para identificar los acordes, tonalidad, compás (tiempo), bpm y ritmo.
-Luego, toma el texto plano proporcionado e inserta los acordes en formato ChordPro (ej. `[Am]`) en las posiciones silábicas correctas basándote visualmente en la partitura.
+        $prompt = "Analiza el PDF adjunto (una partitura musical) para identificar los acordes, tonalidad, compás (tiempo), bpm y ritmo.
+Luego, toma el texto plano proporcionado e inserta los acordes en formato ChordPro (ej. `[Am]`) en las posiciones silábicas correctas basándote en la partitura.
 
-REGLAS ESTRICTAS E IRROMPIBLES:
-0. CADENA DE PENSAMIENTO (analisis_silabico): OBLIGATORIAMENTE antes de generar el chordpro, debes llenar el campo 'analisis_silabico' en el JSON. Realiza un mapa paso a paso de tu razonamiento espacial para cada estrofa. Traza una línea vertical imaginaria desde la letra del acorde en la partitura, pasando por la cabeza de la nota musical, hasta la sílaba exacta del texto plano. Ejemplo de razonamiento esperado: 'Línea 1: El acorde D cae sobre la sílaba Si. El acorde D(maj7) cae sobre la vocal o de oramos. El acorde Em/D cae sobre ñor. Línea 2: El acorde D/F# cae a contratiempo después de ores, por ende se posiciona al final con un espacio.'
-1. NO modifiques ni una sola palabra del texto plano proporcionado. Usa exactamente ese texto como base estructural.
-2. Transcripción Literal de Acordes: NO simplifiques la armonía. Copia los acordes con la sintaxis de la partitura. ADEMÁS, DEBES encapsular las extensiones de acordes como maj7, sus4, add9 en paréntesis obligatoriamente (ej. si la partitura dice `Dmaj7` tú debes escribir `[D(maj7)]`; si dice `Asus4` debes escribir `[A(sus4)]`). Inversiones van con slash (ej. `[G7(#5)/D#]`).
-3. Expansión de Repeticiones: Si el texto plano tiene marcas como `| (3x)` o `Repetir desde la 2da estrofa`, y los acordes varían en las repeticiones, expande el texto copiando la letra para ponerle los acordes exactos. Si el texto plano dice instruccionalmente `Repetir el himno` en línea separada, consérvalo tal cual como texto plano sin añadirle acordes si no es necesario.
-4. PROHIBICIÓN DE GUIONES ARTIFICIALES: Tienes estrictamente prohibido copiar los guiones (`-`) visuales de la partitura. NUNCA insertes un guion dentro de una palabra para separar sílabas. Si un acorde cae exactamente sobre una sílaba, ponlo pegado: `Si can[D(maj7)]tamos` (CORRECTO) en vez de `Si can[D(maj7)]-tamos` (INCORRECTO). ÚNICAMENTE insertarás un guion si el acorde cae a contratiempo en un vacío musical *entre* dos sílabas de una misma palabra (acorde de paso), formateándolo así: `Espí [D/F#]- ritu`. Si hay acordes instrumentales al final de una línea, ponlos al final con un espacio: `fer[G]vor, [D7]`.
-5. Intros con Símbolos visuales: Busca los corchetes horizontales `┌` y `┐` en la partitura que marcan la introducción (o intermedios/finales). TODO el bloque de letras y acordes que quede comprendido visualmente entre esos dos símbolos deberá ser envuelto usando las etiquetas `{start_of_intro}` y `{end_of_intro}`.
-6. Voces Secundarias: Si el texto plano tiene voces secundarias en paréntesis `(ven a perdonar)`, y la partitura muestra acordes para esa voz, pon los acordes DENTRO del paréntesis: `(ven [G/F]a perdonar)`.
-7. Contracantos no registrados: Si la partitura tiene letras de voces secundarias o contracantos que NO están en el texto plano original, IGNORA la letra (no la agregues). Sin embargo, DEBES conservar los acordes de ese contracanto intercalándolos en la posición rítmica correcta sobre la voz principal o durante los silencios.
-8. Extracción Literal del Ritmo: NO adivines el género musical. El 'ritmo' se encuentra explícitamente entre paréntesis junto a la marca de BPM/Tempo (ej. `(Nuevo)`, `(Básico)`). Si existe, cópialo textualmente. Si NO hay ningún texto entre paréntesis al lado del tempo, deja el campo de ritmo completamente vacío en el JSON. ¡No inventes ritmos!
-9. Extracción de BPM/Tempo: Si la partitura indica un rango de velocidad (por ejemplo `q = 75 - 85`), debes extraer SIEMPRE el valor mínimo (el primer número, ej. 75) como tu valor de BPM en el JSON. NUNCA saques promedios ni tomes el valor más alto.
-10. Dinámicas: IGNORA por completo las marcas de dinámica (p, f, mf) y términos de expresión (legato, agitato, subito p, espress).
-11. Etiquetas de Voces: Conserva intactas las etiquetas de género `(H)`, `(M)` o `(T)` que aparecen al final de las líneas en el texto plano.
-12. Discrepancias: Si notas que la partitura tiene letras explícitamente diferentes al texto plano original (por ejemplo, palabras distintas, versos faltantes), obedece SIEMPRE al texto plano para no romperlo. Haz tu mejor esfuerzo para mapear los acordes sobre el texto plano, pero LISTA TODAS LAS DIFERENCIAS en el arreglo 'discrepancias'. Si este arreglo no está vacío, el usuario recibirá una alerta roja de que el resultado no es confiable.
-13. Formato de salida de metadatos al inicio del chordpro: {key: Em}, {tempo: 55}, {time: 6/8}, {ritmo: Balada}, {intro: [Em][C]...}. (Nota: Si el ritmo estaba vacío en la partitura, simplemente omite la etiqueta {ritmo}).
+REGLAS ESTRICTAS DE ALINEACIÓN Y EXTRACCIÓN:
+0. CADENA DE PENSAMIENTO: Llena el campo 'analisis_silabico' con un mapeo conciso por línea de cada acorde a su palabra/sílaba correspondiente (ej: 'L1: [D]->Si, [D(maj7)]->o[ramos], [Em/D]->ñor. L2: [D/F#]->fin de compás').
+1. TEXTO INMUTABLE: NO agregues, borres ni modifiques ninguna palabra del texto plano proporcionado. Usa exactamente ese texto como base estructural.
+2. ANCLAJE PALABRA-SÍLABA (Cero Corrimiento):
+   - Cada acorde en la partitura está alineado visualmente sobre una nota musical y una sílaba específica.
+   - Localiza la palabra completa en el texto plano. Inserta el acorde inmediatamente ANTES de la sílaba donde cae la nota musical: ej. `can[D(maj7)]tamos` (el acorde cae sobre 'ta') o `[D]Si` (el acorde cae sobre 'Si').
+   - PROHIBIDO agregar guiones dentro de palabras cuando el acorde cae sobre una sílaba cantada. NUNCA escribas `can[D]-tamos` ni `Si-[D]`.
+3. ACORDES A CONTRATIEMPO Y EN SILENCIOS:
+   - Acorde al final de compás / Anacrusa: Si un acorde suena en el último tiempo de un compás DESPUÉS de que terminó de cantarse la letra de la línea, colócalo SIEMPRE al final de esa línea con un espacio (ej: `...sus lores, [D/F#]`), NUNCA al inicio de la línea siguiente.
+   - Acorde de paso entre sílabas en nota sostenida: Si un acorde cambia en un tiempo musical intermedio mientras se sostiene una misma vocal, usa un único guion con espacios: `Espí [D/F#]- ritu`.
+   - Acordes instrumentales sucesivos: Si hay dos o más acordes sin letra nueva, sepáralos con un espacio: `Dios [Am] [Am/G]`.
+4. SINTAXIS DE ACORDES:
+   - Encapsula OBLIGATORIAMENTE extensiones como maj7, sus4, add9, dim en paréntesis: `[D(maj7)]`, `[A(sus4)]`, `[C(add9)]`.
+   - Inversiones con barra: `[G/B]`, `[D/F#]`.
+   - Copia la armonía literal de la partitura sin simplificarla.
+5. INTRODUCCIONES ({start_of_intro} y {end_of_intro}):
+   - En estas partituras, la porción que se toca como introducción musical está marcada con una línea continua horizontal con ganchos hacia abajo `┌` y `┐` sobre el pentagrama.
+   - Todo el bloque de acordes y texto comprendido bajo esa línea DEBE ser envuelto entre `{start_of_intro}` y `{end_of_intro}`.
+6. VOCES SECUNDARIAS Y CONTRACANTOS:
+   - Si el texto plano tiene coros entre paréntesis `(ven a perdonar)`, pon los acordes dentro: `(ven [G/F]a perdonar)`.
+   - Si la partitura tiene letras de contracantos no presentes en el texto plano, IGNORA esas letras pero CONSERVA los acordes intercalados rítmicamente sobre la voz principal o en los silencios.
+7. METADATOS:
+   - Ritmo: Cópialo ÚNICAMENTE si está escrito entre paréntesis al lado del BPM/Tempo (ej. `q = 75 - 85 (Nuevo)` -> `Nuevo`). Si NO hay texto entre paréntesis, deja el campo 'ritmo' vacío (\"\").
+   - BPM: Si indica un rango (ej. `75 - 85`), toma SIEMPRE el valor mínimo (ej. 75).
+   - Dinámicas (p, f, mf) y expresiones (legato, espress): IGNÓRALAS por completo.
+   - Conserva etiquetas de voces como `(H)`, `(M)` o `(T)`.
+8. DISCREPANCIAS: Si la letra de la partitura difiere significativamente del texto plano, prioriza la estructura del texto plano y lista las diferencias en el arreglo 'discrepancias'.
 
-EJEMPLO DE SALIDA MAESTRO 1 (Canción 24):
-{title: He aquí el Cordero de Dios}
-{key: C}
-{tempo: 75}
-{time: 2/4}
-
-[C9]He aquí el Cor[G/B]dero de Dios [Am] [Am/G]
-Que [F(maj7)]quita el pe[Dm7]cado del [G(sus4)]mundo, [G7]
-[C9]Que murió [G/B]en mi lugar, [Am] [Am/G]
-En[F(maj7)]tonces me pue[Dm7]de perdonar. [G] 
-
-Coro
-[G#°]Clamo a[Am]hora pi[Gm7(add11)]dien[C7]do:
-Ven [F9]a perdonar, (ven [G/F]a perdonar)
-[Em]Purificar, ([Am7]purificar)
-{start_of_intro}Ven [F9]a transformar [G/F]  [E]y renovar, [Am]  [Am/G]
-[Dm7]Ven a [G7]restau[C]rar. [G]{end_of_intro}
-
-[C9]Delante [G/B]de tu altar [Am]   [Am/G]
-[F(maj7)]Dejo [Dm7]mi ansie[G(sus4)]dad, [G7]
-[C9]Por la san[G/B]gre de Jesús [Am] [Am/G]tengo [F(maj7)]vi [Dm7]- [G]da.
-
-Coro
-[G#°]Clamo a[Am]hora pi[Gm7(add11)]dien[C7]do:
-Ven [F9]a perdonar, (ven [G/F]a perdonar)
-[Em]Purificar, ([Am7]purificar)
-Ven [F9]a transformar [G/F]   [E]y renovar, [Am][Am/G]
-[Dm7]Ven a [G7]restau[C]rar. [Am]
-
-Final:
-[Dm7]Ven a [G7]restau[C]rar.
-
-EJEMPLO DE SALIDA MAESTRO 2 (Canción 442, atención al ritmo y símbolos visuales):
-{title: Más de tu Santo Espíritu (Doble porción)}
-{key: D}
-{tempo: 40}
-{time: 2/2}
-{ritmo: Básico}
-
-[D]Más de tu San[Em7]to Espí [D/F#]- ritu, [G]danos, Señor,  [A(sus4)] [A]
-[Bm7]Más de los te[G]soros es [D/F#]- condi [Em]- dos de [G/A]tu amor; [A]
-[D]Más, mucho [A/C#]más nos tienes [Bm]para dar
-Si bus[Bm/A]camos sin cesar, [Bm/G#]
-Más, mucho [D/A]más, nos [G/A]quieres ben [A]- decir. [D] [D(sus4)] [D]
-
-Coro
-Por eso [A/G]te roga [D/F#]- mos, [A/G] con fe ora [D/F#]- mos,
-Mani[Bm7]fiesta de [Bm/A] tu gra [Bm/G#]- cia hoy a[Em/A]quí; [A]
-Da[D/F#]nos do[A/G]ble porción [D/F#] de tu [F#]Santo Espí [F#/A#]- ritu, [Bm]
-[Bm7]Para que [G(sus2)]más, [G] mucho [D/F#]más,
-Te [Em]poda [G/A]- mos servir. [Bm7]
-{start_of_intro}Para que [G(sus2)]más, [G] mucho [D/F#]más,
-Te [Em]poda [G/A]- mos servir. [D]{end_of_intro}
-
-[D]Ven y re[Em7]vela a es [D/F#]- ta [G]generación [A(sus4)] [A]
-[Bm7]Las maravi[G]llas y [D/F#] seña [Em]- les de la [G/A]salvación; [A]
-[D]Tal como a [A/C#]nuestros padres mos[Bm]traste
-Abun[Bm/A]dante gracia y amor, [Bm/G#]
-Más, mucho [D/A]más, con[G/A]cédenos, [A] Señor. [D] [D(sus4)] [D]
-
-EJEMPLO DE SALIDA MAESTRO 3 (Canción 29, Versos apilados musicalmente bajo los mismos acordes):
-{title: Oh, Señor, tú eres mi Pastor}
-{key: E}
-{tempo: 60}
-{time: 4/4}
-{ritmo: Básico}
-{intro: [E9][B/D#][C#m7][C#m/B][A][F#m7][A/B]}
-
-[E9] Oh, Señor, tú eres [E(sus4)]mi Pas[E]tor, [A(maj7)(add9)]
-Nada me faltará. [E/G#]
-[F#m] Estoy sufriendo en el [F#m/E]valle; [B/D#]
-Ven a [A/C#]conso[A6/B]larme. 
-
-[E9] Todos los días [E(sus4)]sien[E]to [A(maj7)(add9)] tu bondad 
-Y misericordia que me [E/G#]siguen. [F#m]
-Yo no teme[F#m/E]ré [B/D#]
-Y la vic[A/C#]toria al[A/B]canza[B7]ré.
-
-Coro
-[E9]Mas yo tengo que esperar
-Que este [B/D#]tiempo [C#m7]pase,
-Du[C#m/B]rante este [A9]tiempo preciso [E/G#]descan[F#m]sar. 
-Je[A/B]sús lleva mi [E9]alma a [B/D#]las aguas tran[C#m]quilas
-Y [C#m/B]por los verdes [A9]pastos, conmigo [E/G#]quéda[F#m7]te. 
-En [A/B]ti descansa[E9]ré. 
-
-Instrumentos: [B/D#][C#m7][C#m/B][A][F#m7][A/B]
+MICRO-EJEMPLOS MAESTROS DE ALINEACIÓN:
+- Acorde pegado a sílaba sin guion y acorde al final de compás:
+  `[D]Si can[D(maj7)]tamos sus lo[Em/D]res, [D/F#]`
+  `[G]Su [A/G]gloria llena[F#m7]rá [Bm]`
+- Acorde a contratiempo en vocal sostenida:
+  `[D]Más de tu San[Em7]to Espí [D/F#]- ritu, [G]danos, Señor`
+- Acordes instrumentales al final o solos:
+  `He aquí el Cor[G/B]dero de Dios [Am] [Am/G]`
+- Introducción enmarcada:
+  `{start_of_intro}Ven [F9]a transformar [G/F]  [E]y renovar, [Am]  [Am/G]{end_of_intro}`
 
 Texto Plano proporcionado:
 " . $letras;
@@ -819,20 +805,16 @@ Texto Plano proporcionado:
         ]
     ];
     
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=" . $geminiApiKey;
+    $primaryModel = $_ENV['GEMINI_MODEL'] ?? 'gemini-3.8-flash';
+    $fallbackModel = 'gemini-3.6-flash';
+    if ($primaryModel === $fallbackModel) {
+        $fallbackModel = 'gemini-3.1-flash-lite';
+    }
     
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    $result = call_gemini_with_fallback($payload, $geminiApiKey, $primaryModel, $fallbackModel);
     
-    $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    if ($http_code === 200) {
-        $data = json_decode($response, true);
+    if ($result['success']) {
+        $data = json_decode($result['response'], true);
         $resultText = $data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
         
         $resultJson = json_decode($resultText, true);
@@ -842,9 +824,14 @@ Texto Plano proporcionado:
         if ($modo === 'partitura') {
             $resultJson['pdf_url'] = '/assets/partituras/' . $fileName;
         }
+        $resultJson['modelo_usado'] = $result['model'];
         json_response($resultJson);
     } else {
-        json_response(["error" => "Error de la API de Gemini", "details" => $response], 500);
+        json_response([
+            "error" => "Error de la API de Gemini", 
+            "http_code" => $result['http_code'], 
+            "details" => $result['response']
+        ], 500);
     }
 }
 
