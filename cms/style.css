@@ -2422,18 +2422,22 @@ input:focus, select:focus, textarea:focus {
     font-size: var(--text-sm);
   }
 
-  #publish-btn {
+  #publish-btn:not(.hidden) {
     display: inline-flex !important;
     min-height: 36px;
     padding: 6px 12px;
     flex-shrink: 0;
   }
 
+  #publish-btn.hidden {
+    display: none !important;
+  }
+
   #publish-btn .publish-label {
     display: none;
   }
 
-  #mobile-menu-toggle-btn {
+  #mobile-menu-toggle-btn:not(.hidden) {
     display: inline-flex !important;
     min-height: 36px;
     width: 38px;
@@ -2441,6 +2445,10 @@ input:focus, select:focus, textarea:focus {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+  }
+
+  #mobile-menu-toggle-btn.hidden {
+    display: none !important;
   }
 
   /* Mobile Dashboard Optimization */
