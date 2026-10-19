@@ -85,6 +85,13 @@ const auditModal = document.getElementById('audit-modal');
 const auditLogsRows = document.getElementById('audit-logs-rows');
 const closeAuditModal = document.getElementById('close-audit-modal');
 
+function clearPdfDiscrepanciesAlert() {
+  const alertEl = document.getElementById('pdf-discrepancies-alert');
+  const listEl = document.getElementById('pdf-discrepancies-list');
+  if (alertEl) alertEl.classList.add('hidden');
+  if (listEl) listEl.innerHTML = '';
+}
+
 // Page Load Setup
 document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
@@ -410,6 +417,164 @@ function setupEventListeners() {
     });
   }
 
+  // --- Header More Options Dropdown Toggle ---
+  const editorMoreBtn = document.getElementById('editor-more-options-btn');
+  const editorMoreMenu = document.getElementById('editor-more-options-menu');
+  if (editorMoreBtn && editorMoreMenu) {
+    editorMoreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      editorMoreMenu.classList.toggle('hidden');
+    });
+  }
+
+  // --- AI & Partituras Dropdown Toggle ---
+  const btnAiToolsDropdown = document.getElementById('btn-ai-tools-dropdown');
+  const aiToolsMenu = document.getElementById('ai-tools-dropdown-menu');
+  if (btnAiToolsDropdown && aiToolsMenu) {
+    btnAiToolsDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      aiToolsMenu.classList.toggle('hidden');
+    });
+
+    aiToolsMenu.querySelectorAll('.dropdown-item').forEach(item => {
+      item.addEventListener('click', () => {
+        aiToolsMenu.classList.add('hidden');
+      });
+    });
+  }
+
+  // Close dropdowns on clicking outside
+  document.addEventListener('click', (e) => {
+    if (editorMoreMenu && !editorMoreMenu.classList.contains('hidden') && !editorMoreMenu.contains(e.target) && e.target !== editorMoreBtn) {
+      editorMoreMenu.classList.add('hidden');
+    }
+    if (aiToolsMenu && !aiToolsMenu.classList.contains('hidden') && !aiToolsMenu.contains(e.target) && e.target !== btnAiToolsDropdown) {
+      aiToolsMenu.classList.add('hidden');
+    }
+  });
+
+  // --- Metadata Strip PDF Badge Click ---
+  const metaStripPdfBadge = document.getElementById('meta-strip-pdf-badge');
+  if (metaStripPdfBadge) {
+    metaStripPdfBadge.addEventListener('click', () => {
+      const urls = state.partituras_urls || state.currentSong?.partituras_urls || {};
+      const url = urls[state.currentCifraLang] || (state.currentCifraLang === 'es' ? (state.currentSong?.partitura_url || state.activeDraft?.data?.partitura_url) : null);
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        const pdfAttachInput = document.getElementById('pdf-attach-upload');
+        if (pdfAttachInput) pdfAttachInput.click();
+      }
+    });
+  }
+
+  // --- Workspace View Switcher (Desktop Split / Editor / Preview) ---
+  const viewSwitchBtns = document.querySelectorAll('.view-switch-btn');
+  const chordproLayout = document.getElementById('chordpro-layout-container');
+  viewSwitchBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      viewSwitchBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const mode = btn.getAttribute('data-view');
+      if (chordproLayout) {
+        chordproLayout.classList.remove('view-mode-editor-only', 'view-mode-preview-only');
+        if (mode === 'editor') {
+          chordproLayout.classList.add('view-mode-editor-only');
+        } else if (mode === 'preview') {
+          chordproLayout.classList.add('view-mode-preview-only');
+        }
+      }
+    });
+  });
+
+  // --- Preview Mode Switcher (Chords vs PDF) ---
+  const btnPreviewChords = document.getElementById('btn-preview-mode-chords');
+  const btnPreviewPdf = document.getElementById('btn-preview-mode-pdf');
+  const chordsPreviewOut = document.getElementById('chords-preview');
+  const pdfPreviewPane = document.getElementById('pdf-preview-pane');
+  const transposeGroup = document.getElementById('preview-transpose-group');
+
+  if (btnPreviewChords && btnPreviewPdf && chordsPreviewOut && pdfPreviewPane) {
+    btnPreviewChords.addEventListener('click', () => {
+      btnPreviewChords.classList.add('active');
+      btnPreviewPdf.classList.remove('active');
+      chordsPreviewOut.classList.remove('hidden');
+      pdfPreviewPane.classList.add('hidden');
+      if (transposeGroup) transposeGroup.classList.remove('hidden');
+    });
+
+    btnPreviewPdf.addEventListener('click', () => {
+      btnPreviewPdf.classList.add('active');
+      btnPreviewChords.classList.remove('active');
+      chordsPreviewOut.classList.add('hidden');
+      pdfPreviewPane.classList.remove('hidden');
+      if (transposeGroup) transposeGroup.classList.add('hidden');
+      const urls = state.partituras_urls || state.currentSong?.partituras_urls || {};
+      const url = urls[state.currentCifraLang] || (state.currentCifraLang === 'es' ? (state.currentSong?.partitura_url || state.activeDraft?.data?.partitura_url) : null);
+      updatePdfPreviewPane(state.currentCifraLang, url);
+    });
+  }
+
+  // --- Transpose Controls in Preview Pane ---
+  let currentTransposeOffset = 0;
+  window.getCurrentTransposeOffset = () => currentTransposeOffset;
+  const btnTransposeDown = document.getElementById('btn-transpose-down');
+  const btnTransposeUp = document.getElementById('btn-transpose-up');
+  const transposeBadge = document.getElementById('transpose-current-key');
+
+  const updateTransposeOffset = (delta) => {
+    currentTransposeOffset += delta;
+    if (transposeBadge) {
+      if (currentTransposeOffset === 0) {
+        transposeBadge.textContent = 'Orig';
+      } else {
+        transposeBadge.textContent = currentTransposeOffset > 0 ? `+${currentTransposeOffset}` : `${currentTransposeOffset}`;
+      }
+    }
+    renderChordProPreview(currentTransposeOffset);
+  };
+
+  if (btnTransposeDown) btnTransposeDown.addEventListener('click', () => updateTransposeOffset(-1));
+  if (btnTransposeUp) btnTransposeUp.addEventListener('click', () => updateTransposeOffset(1));
+  if (transposeBadge) transposeBadge.addEventListener('click', () => {
+    currentTransposeOffset = 0;
+    transposeBadge.textContent = 'Orig';
+    renderChordProPreview(0);
+  });
+
+  // --- Mobile Keyboard Accessory Bar Chips ---
+  document.querySelectorAll('.accessory-chip[data-char]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const char = chip.getAttribute('data-char');
+      const textarea = document.getElementById('chordpro-textarea');
+      if (textarea) {
+        const start = textarea.selectionStart || 0;
+        const end = textarea.selectionEnd || 0;
+        const val = textarea.value;
+        textarea.value = val.substring(0, start) + char + val.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + char.length;
+        textarea.focus();
+        textarea.dispatchEvent(new Event('input'));
+      }
+    });
+  });
+
+  const mobileQuickChord = document.getElementById('mobile-quick-chord');
+  if (mobileQuickChord) {
+    mobileQuickChord.addEventListener('click', () => {
+      const btnOpenBuilder = document.getElementById('btn-open-chord-builder');
+      if (btnOpenBuilder) btnOpenBuilder.click();
+    });
+  }
+
+  const mobileQuickIntro = document.getElementById('mobile-quick-intro');
+  if (mobileQuickIntro) {
+    mobileQuickIntro.addEventListener('click', () => {
+      const btnIntro = document.getElementById('btn-mark-intro');
+      if (btnIntro) btnIntro.click();
+    });
+  }
+
   // Chord Assistant Toolbar Event Listeners
   const btnOpenChordBuilder = document.getElementById('btn-open-chord-builder');
   if (btnOpenChordBuilder) {
@@ -453,6 +618,11 @@ function setupEventListeners() {
   const pdfExtractLoading = document.getElementById('pdf-extract-loading');
   const pdfDiscrepanciesAlert = document.getElementById('pdf-discrepancies-alert');
   const pdfDiscrepanciesList = document.getElementById('pdf-discrepancies-list');
+  const closePdfDiscrepanciesAlert = document.getElementById('close-pdf-discrepancies-alert');
+
+  if (closePdfDiscrepanciesAlert) {
+    closePdfDiscrepanciesAlert.addEventListener('click', clearPdfDiscrepanciesAlert);
+  }
   
   // PDF Discrepancies Audit Modal Elements
   const pdfAuditModal = document.getElementById('pdf-audit-modal');
@@ -477,11 +647,13 @@ function setupEventListeners() {
       return;
     }
 
+    const lang = state.currentCifraLang || 'es';
     const formData = new FormData();
     formData.append('pdf', file);
     formData.append('cancion_id', songId);
+    formData.append('idioma', lang);
 
-    showToast('Subiendo partitura al servidor...', false);
+    showToast(`Subiendo partitura (${lang.toUpperCase()}) al servidor...`, false);
     try {
       const response = await fetch(`${API_BASE}/pdf-upload`, {
         method: 'POST',
@@ -495,20 +667,19 @@ function setupEventListeners() {
       }
 
       state.currentSong = state.currentSong || {};
-      state.currentSong.partitura_url = data.pdf_url;
-      if (state.activeDraft && state.activeDraft.data) {
-        state.activeDraft.data.partitura_url = data.pdf_url;
+      state.partituras_urls = state.partituras_urls || {};
+      const savedLang = data.idioma || lang;
+      state.partituras_urls[savedLang] = data.pdf_url;
+      if (savedLang === 'es') {
+        state.currentSong.partitura_url = data.pdf_url;
+        if (state.activeDraft && state.activeDraft.data) {
+          state.activeDraft.data.partitura_url = data.pdf_url;
+        }
       }
 
-      if (btnViewPdf) {
-        btnViewPdf.classList.remove('hidden');
-        btnViewPdf.onclick = () => window.open(data.pdf_url, '_blank');
-      }
-      if (btnReprocessPdf) {
-        btnReprocessPdf.classList.remove('hidden');
-      }
+      updatePartituraButtonsForLang(state.currentCifraLang || 'es');
 
-      showToast('Partitura guardada en el servidor. Puedes verla o procesarla con IA.', false);
+      showToast(`Partitura (${savedLang.toUpperCase()}) guardada en el servidor. Puedes verla o procesarla con IA.`, false);
       saveDraftSong();
     } catch (err) {
       showToast(err.message, true);
@@ -535,11 +706,13 @@ function setupEventListeners() {
     formData.append('letras', plainLyrics);
     const activeSongId = state.currentSongId !== undefined ? state.currentSongId : (state.currentSong?.id || 'temp');
     formData.append('cancion_id', activeSongId);
+    const extractLang = state.currentCifraLang || 'es';
+    formData.append('idioma', extractLang);
     
     if (pdfExtractLoading) {
       pdfExtractLoading.textContent = reprocess 
-        ? '⏳ Reprocesando partitura del servidor con IA (puede tardar unos 15 segundos)...' 
-        : '⏳ Procesando PDF con IA (puede tardar unos 15 segundos)...';
+        ? `⏳ Reprocesando partitura (${extractLang.toUpperCase()}) del servidor con IA (puede tardar unos 15 segundos)...` 
+        : `⏳ Procesando PDF (${extractLang.toUpperCase()}) con IA (puede tardar unos 15 segundos)...`;
       pdfExtractLoading.classList.remove('hidden');
     }
     pdfDiscrepanciesAlert.classList.add('hidden');
@@ -572,17 +745,16 @@ function setupEventListeners() {
       
       if (modo === 'partitura' && data.pdf_url) {
         state.currentSong = state.currentSong || {};
-        state.currentSong.partitura_url = data.pdf_url;
-        if (state.activeDraft && state.activeDraft.data) {
-           state.activeDraft.data.partitura_url = data.pdf_url;
+        state.partituras_urls = state.partituras_urls || {};
+        const savedLang = data.idioma || extractLang;
+        state.partituras_urls[savedLang] = data.pdf_url;
+        if (savedLang === 'es') {
+          state.currentSong.partitura_url = data.pdf_url;
+          if (state.activeDraft && state.activeDraft.data) {
+             state.activeDraft.data.partitura_url = data.pdf_url;
+          }
         }
-        if (btnViewPdf) {
-          btnViewPdf.classList.remove('hidden');
-          btnViewPdf.onclick = () => window.open(data.pdf_url, '_blank');
-        }
-        if (btnReprocessPdf) {
-          btnReprocessPdf.classList.remove('hidden');
-        }
+        updatePartituraButtonsForLang(state.currentCifraLang || 'es');
       }
       
       const existing = hasExistingChords();
@@ -772,6 +944,7 @@ function setupEventListeners() {
   function closePdfAuditModal() {
     if (pdfAuditModal) pdfAuditModal.classList.add('hidden');
     state.pendingPdfAudit = null;
+    clearPdfDiscrepanciesAlert();
   }
 
   if (closePdfAuditX) {
@@ -1307,6 +1480,7 @@ function showMobileSidebar() {
 // Load Song Detail
 window.loadSong = async function(songId) {
   try {
+    clearPdfDiscrepanciesAlert();
     showMobileWorkspace();
     const items = document.querySelectorAll('.song-item');
     items.forEach(item => item.classList.remove('active'));
@@ -1323,24 +1497,11 @@ window.loadSong = async function(songId) {
     state.currentCifraLang = 'es';
     state.notesList = state.activeDraft ? (state.activeDraft.data.notas || []) : (state.currentSong?.notas || []);
     
-    const btnViewPdf = document.getElementById('btn-view-pdf');
-    const btnReprocessPdf = document.getElementById('btn-reprocess-pdf');
-    if (btnViewPdf) {
-      if (data.partitura_url) {
-        btnViewPdf.classList.remove('hidden');
-        btnViewPdf.onclick = () => window.open(data.partitura_url, '_blank');
-      } else {
-        btnViewPdf.classList.add('hidden');
-        btnViewPdf.onclick = null;
-      }
+    state.partituras_urls = data.partituras_urls || {};
+    if (data.partitura_url && !state.partituras_urls['es']) {
+      state.partituras_urls['es'] = data.partitura_url;
     }
-    if (btnReprocessPdf) {
-      if (data.partitura_url) {
-        btnReprocessPdf.classList.remove('hidden');
-      } else {
-        btnReprocessPdf.classList.add('hidden');
-      }
-    }
+    updatePartituraButtonsForLang('es');
     // Sync active highlight
     fetchSongsListSync();
 
@@ -1363,6 +1524,16 @@ window.loadSong = async function(songId) {
     const badge = document.getElementById('hymnary-badge');
     badge.textContent = himnarioCodigo;
     badge.className = `song-hymnary-tag badge-${state.currentSong?.himnary_badge || state.currentSong?.himnario_codigo || himnarioCodigo}`;
+
+    const navSongIndex = document.getElementById('nav-song-index');
+    if (navSongIndex && state.songs && state.songs.length > 0) {
+      const idx = state.songs.findIndex(s => s.id === songId);
+      if (idx !== -1) {
+        navSongIndex.textContent = `${idx + 1} / ${state.songs.length}`;
+      } else {
+        navSongIndex.textContent = `Alabanza`;
+      }
+    }
 
     // Status Badge & Controls
     if (state.activeDraft) {
@@ -1439,6 +1610,7 @@ window.loadSong = async function(songId) {
     // Default to ChordPro Tab
     tabLinks[0].click();
   } catch (err) {
+    console.error("Error al cargar la alabanza:", err);
     showToast("Error al cargar la alabanza.", true);
   }
 };
@@ -1453,12 +1625,99 @@ function fetchSongsListSync() {
   });
 }
 
+function updatePartituraButtonsForLang(lang) {
+  const btnViewPdf = document.getElementById('btn-view-pdf');
+  const btnReprocessPdf = document.getElementById('btn-reprocess-pdf');
+  const urls = state.partituras_urls || state.currentSong?.partituras_urls || {};
+  const url = urls[lang] || (lang === 'es' ? (state.currentSong?.partitura_url || state.activeDraft?.data?.partitura_url) : null);
+  const upperLang = (lang || 'es').toUpperCase();
+
+  if (btnViewPdf) {
+    if (url) {
+      btnViewPdf.classList.remove('hidden');
+      btnViewPdf.onclick = () => window.open(url, '_blank');
+      btnViewPdf.title = `Ver Partitura Original (${upperLang})`;
+    } else {
+      btnViewPdf.classList.add('hidden');
+      btnViewPdf.onclick = null;
+    }
+  }
+  if (btnReprocessPdf) {
+    if (url) {
+      btnReprocessPdf.classList.remove('hidden');
+      btnReprocessPdf.title = `Reprocesar con IA la partitura (${upperLang}) guardada en el servidor`;
+    } else {
+      btnReprocessPdf.classList.add('hidden');
+    }
+  }
+
+  // Update Metadata Strip Badge
+  const pdfDot = document.getElementById('meta-strip-pdf-dot');
+  const pdfText = document.getElementById('meta-strip-pdf-text');
+  const pdfBadge = document.getElementById('meta-strip-pdf-badge');
+  if (pdfDot && pdfText) {
+    if (url) {
+      pdfDot.classList.add('has-pdf');
+      pdfText.textContent = `Partitura ${upperLang} ✓`;
+      if (pdfBadge) pdfBadge.title = `Partitura oficial (${upperLang}) disponible. Clic para verla.`;
+    } else {
+      pdfDot.classList.remove('has-pdf');
+      pdfText.textContent = `Sin Partitura ${upperLang}`;
+      if (pdfBadge) pdfBadge.title = `Sin partitura oficial en ${upperLang}. Clic para adjuntar.`;
+    }
+  }
+
+  // Update PDF preview pane
+  updatePdfPreviewPane(lang, url);
+}
+
+function updatePdfPreviewPane(lang, url) {
+  const emptyPane = document.getElementById('pdf-preview-empty');
+  const activePane = document.getElementById('pdf-preview-active');
+  const langTag = document.getElementById('pdf-preview-lang-tag');
+  const titleEl = document.getElementById('pdf-preview-title');
+  const openBtn = document.getElementById('btn-pdf-preview-open');
+  const replaceBtn = document.getElementById('btn-pdf-preview-replace');
+  const uploadBtn = document.getElementById('btn-pdf-preview-upload');
+
+  const upperLang = (lang || 'es').toUpperCase();
+  if (langTag) langTag.textContent = upperLang;
+
+  if (url) {
+    if (emptyPane) emptyPane.classList.add('hidden');
+    if (activePane) activePane.classList.remove('hidden');
+    if (titleEl) {
+      const filename = url.split('/').pop();
+      titleEl.textContent = filename || `Partitura Oficial (${upperLang})`;
+    }
+    if (openBtn) openBtn.onclick = () => window.open(url, '_blank');
+    if (replaceBtn) {
+      replaceBtn.onclick = () => {
+        const attachInput = document.getElementById('pdf-attach-upload');
+        if (attachInput) attachInput.click();
+      };
+    }
+  } else {
+    if (emptyPane) emptyPane.classList.remove('hidden');
+    if (activePane) activePane.classList.add('hidden');
+    if (uploadBtn) {
+      uploadBtn.onclick = () => {
+        const attachInput = document.getElementById('pdf-attach-upload');
+        if (attachInput) attachInput.click();
+      };
+    }
+  }
+}
+
 function switchCifraLang(lang) {
+  clearPdfDiscrepanciesAlert();
   state.currentCifraLang = lang;
 
   document.getElementById('cifra-lang-es').classList.toggle('active', lang === 'es');
   document.getElementById('cifra-lang-pt').classList.toggle('active', lang === 'pt');
   document.getElementById('cifra-lang-en').classList.toggle('active', lang === 'en');
+
+  updatePartituraButtonsForLang(lang);
 
   const workingData = state.activeDraft ? state.activeDraft.data : state.currentSong;
   const cifra = workingData.cifras[lang] || { contenido: '', tonalidad: '', tiempo: '', bpm: 0, ritmo: '' };
@@ -1709,7 +1968,26 @@ function parseChordProLine(line) {
   return { type: 'lyrics', tokens: tokens };
 }
 
-function renderChordProPreview() {
+const NOTES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const NOTES_FLAT  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+function transposeChord(chord, semitones) {
+  if (!chord || semitones === 0) return chord;
+  return chord.replace(/([A-G][#b]?)/g, (match) => {
+    let idx = NOTES_SHARP.indexOf(match);
+    let useFlats = false;
+    if (idx === -1) {
+      idx = NOTES_FLAT.indexOf(match);
+      useFlats = true;
+    }
+    if (idx === -1) return match;
+    let newIdx = (idx + semitones) % 12;
+    if (newIdx < 0) newIdx += 12;
+    return useFlats ? NOTES_FLAT[newIdx] : NOTES_SHARP[newIdx];
+  });
+}
+
+function renderChordProPreview(transposeOffset = 0) {
   const text = document.getElementById('chordpro-textarea').value;
   const previewContainer = document.getElementById('chords-preview');
   
@@ -1717,6 +1995,8 @@ function renderChordProPreview() {
     previewContainer.innerHTML = '<div style="color: var(--color-text-muted); font-size: 0.9rem;">No hay cifrado para previsualizar.</div>';
     return;
   }
+
+  const offset = typeof transposeOffset === 'number' ? transposeOffset : (window.getCurrentTransposeOffset ? window.getCurrentTransposeOffset() : 0);
 
   const lines = text.split('\n');
   let html = '';
@@ -1749,7 +2029,11 @@ function renderChordProPreview() {
     } else if (parsed.type === 'header') {
       html += `<div class="preview-header">${parsed.text}</div>`;
     } else if (parsed.type === 'directive') {
-      html += `<div style="font-size: 0.75rem; color: var(--color-text-muted); font-family: monospace;">${parsed.text}</div>`;
+      // Hide raw metadata directives that are already cleanly shown in the metadata strip
+      const isMetaDirective = /^\{(title|key|tempo|bpm|time|compas|ritmo|rhythm):/i.test(parsed.text.trim());
+      if (!isMetaDirective) {
+        html += `<div style="font-size: 0.75rem; color: var(--color-text-muted); font-family: monospace;">${parsed.text}</div>`;
+      }
     } else if (parsed.type === 'lyrics') {
       let lineHtml = `<div class="preview-line" data-line-idx="${lineIdx}">`;
       for (let tIdx = 0; tIdx < parsed.tokens.length; tIdx++) {
@@ -1761,8 +2045,10 @@ function renderChordProPreview() {
         const isDraggable = token.chord ? 'draggable="true"' : '';
         const dataAttrs = token.chord ? `data-line-idx="${lineIdx}" data-chord-idx="${token.chordIndex}" data-raw-offset="${token.rawChordOffset}"` : '';
         
+        const displayedChord = token.chord ? (offset !== 0 ? transposeChord(token.chord, offset) : token.chord) : '';
+
         const chordHtml = token.chord 
-          ? `<span class="preview-chord" ${isDraggable} ${dataAttrs}>${token.chord}</span>` 
+          ? `<span class="preview-chord" ${isDraggable} ${dataAttrs}>${displayedChord}</span>` 
           : '<span class="preview-chord">&nbsp;</span>';
           
         const tokenClass = token.chord ? 'preview-token has-chord' : 'preview-token';

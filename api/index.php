@@ -1042,7 +1042,7 @@ if (preg_match('/^\/songs\/(-?\d+)$/', $path, $matches) && $request_method === '
             "data" => json_decode($draft['data_json'], true)
         ] : null,
         "partitura_url" => $partitura_url,
-        "partituras_urls" => $partituras_urls
+        "partituras_urls" => (object)$partituras_urls
     ]);
 }
 

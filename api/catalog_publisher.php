@@ -308,16 +308,34 @@ function catalog_publish(array $config) {
 
             foreach (glob($foundDir . '/*.pdf') as $pdfFile) {
                 $base = basename($pdfFile);
-                if (preg_match('/^(?:cancion_|himno_)?(\d+)(?:_[a-f0-9]+)?\.pdf$/i', $base, $pm)) {
+                if (preg_match('/^(?:cancion_|himno_)?(\d+)(?:_([a-z]{2}))?(?:_[a-f0-9]+)?\.pdf$/i', $base, $pm)) {
                     $val = (string)$pm[1];
-                    $partituras[$val] = $base;
+                    $lang = !empty($pm[2]) ? strtolower($pm[2]) : 'es';
+
+                    $partituras[$val . '_' . $lang] = $base;
+                    if (empty($partituras[$val]) || $lang === 'es') {
+                        $partituras[$val] = $base;
+                    }
+
                     if ($dbForMeta) {
                         try {
                             $stmt = $dbForMeta->prepare("SELECT id, numero_en_himnario FROM cancion WHERE id = ? OR numero_en_himnario = ?");
                             $stmt->execute([$val, $val]);
                             while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                                if (!empty($r['id'])) $partituras[(string)$r['id']] = $base;
-                                if (!empty($r['numero_en_himnario'])) $partituras[(string)$r['numero_en_himnario']] = $base;
+                                if (!empty($r['id'])) {
+                                    $cId = (string)$r['id'];
+                                    $partituras[$cId . '_' . $lang] = $base;
+                                    if (empty($partituras[$cId]) || $lang === 'es') {
+                                        $partituras[$cId] = $base;
+                                    }
+                                }
+                                if (!empty($r['numero_en_himnario'])) {
+                                    $cNum = (string)$r['numero_en_himnario'];
+                                    $partituras[$cNum . '_' . $lang] = $base;
+                                    if (empty($partituras[$cNum]) || $lang === 'es') {
+                                        $partituras[$cNum] = $base;
+                                    }
+                                }
                             }
                         } catch (Exception $e) {
                             // Best-effort

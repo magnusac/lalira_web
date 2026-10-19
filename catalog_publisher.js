@@ -270,17 +270,31 @@ export function publishCatalog(config) {
 
       for (const file of files) {
         if (!file.toLowerCase().endsWith('.pdf')) continue;
-        const m = file.match(/^(?:cancion_|himno_)?(\d+)(?:_[a-f0-9]+)?\.pdf$/i);
+        const m = file.match(/^(?:cancion_|himno_)?(\d+)(?:_([a-z]{2}))?(?:_[a-f0-9]+)?\.pdf$/i);
         if (m) {
           const val = m[1];
-          partituras[val] = file;
+          const lang = m[2] ? m[2].toLowerCase() : 'es';
+
+          partituras[`${val}_${lang}`] = file;
+          if (!partituras[val] || lang === 'es') {
+            partituras[val] = file;
+          }
+
           if (dbForMeta) {
             try {
               const stmt = dbForMeta.prepare("SELECT id, numero_en_himnario FROM cancion WHERE id = ? OR numero_en_himnario = ?");
               const rows = stmt.all(val, val);
               for (const r of rows) {
-                if (r.id != null) partituras[String(r.id)] = file;
-                if (r.numero_en_himnario != null) partituras[String(r.numero_en_himnario)] = file;
+                if (r.id != null) {
+                  const cId = String(r.id);
+                  partituras[`${cId}_${lang}`] = file;
+                  if (!partituras[cId] || lang === 'es') partituras[cId] = file;
+                }
+                if (r.numero_en_himnario != null) {
+                  const cNum = String(r.numero_en_himnario);
+                  partituras[`${cNum}_${lang}`] = file;
+                  if (!partituras[cNum] || lang === 'es') partituras[cNum] = file;
+                }
               }
             } catch {}
           }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>La Lira CMS — Portal de Edición</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css?v=2.2.4">
+  <link rel="stylesheet" href="./style.css?v=2.2.6">
   <link rel="shortcut icon" href="../assets/logo.svg" type="image/svg+xml">
   <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
   <link rel="apple-touch-icon" href="../assets/logo.svg">
@@ -277,7 +277,7 @@
       <!-- Editor Panel -->
       <div id="editor-panel" class="editor-panel hidden">
         <div class="editor-header">
-          <button id="mobile-back-btn" class="btn btn-secondary btn-sm mobile-back-btn" title="Volver al menú">
+          <button id="mobile-back-btn" class="btn btn-secondary btn-sm mobile-back-btn mobile-only" title="Volver al menú">
             ← Volver
           </button>
 
@@ -292,12 +292,13 @@
             </div>
           </div>
           
-          <div class="song-navigation-group" style="display: flex; gap: 8px; align-items: center; margin-left: 16px; margin-right: auto;">
-            <button id="prev-song-btn" class="btn btn-secondary btn-sm" title="Alabanza Anterior">
-              &lt; Anterior
+          <div class="song-navigation-group">
+            <button id="prev-song-btn" class="nav-pill-btn" title="Alabanza Anterior (Alt+←)">
+              ‹
             </button>
-            <button id="next-song-btn" class="btn btn-secondary btn-sm" title="Alabanza Siguiente">
-              Siguiente &gt;
+            <span class="nav-pill-label" id="nav-song-index">Alabanza</span>
+            <button id="next-song-btn" class="nav-pill-btn" title="Alabanza Siguiente (Alt+→)">
+              ›
             </button>
           </div>
           
@@ -309,9 +310,6 @@
             <button id="submit-approval-btn" class="btn btn-primary">
               Enviar a Aprobación
             </button>
-            <button id="discard-draft-btn" class="btn btn-secondary hidden" style="color: var(--color-danger); border-color: rgba(231, 76, 60, 0.4);" title="Descartar borrador y restaurar versión oficial">
-              Descartar Borrador
-            </button>
             
             <!-- Admin approval operations -->
             <div id="admin-approval-actions" class="admin-approval-group admin-only hidden">
@@ -322,10 +320,21 @@
                 Rechazar
               </button>
             </div>
-            
-            <button id="delete-song-btn" class="btn btn-danger admin-only hidden" style="margin-left: 8px;">
-              Eliminar Canción
-            </button>
+
+            <!-- More Options Dropdown -->
+            <div class="dropdown-wrapper" id="editor-more-options-container">
+              <button type="button" class="btn btn-secondary btn-icon-only" id="editor-more-options-btn" title="Más opciones de la alabanza" aria-label="Más opciones" aria-haspopup="true">
+                <svg viewBox="0 0 24 24" class="btn-icon" style="width:18px;height:18px;"><path fill="currentColor" d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+              </button>
+              <div class="dropdown-menu-custom dropdown-menu-right hidden" id="editor-more-options-menu">
+                <button type="button" class="dropdown-item hidden" id="discard-draft-btn" style="color: var(--color-danger);">
+                  🔄 Descartar Borrador
+                </button>
+                <button type="button" class="dropdown-item admin-only hidden" id="delete-song-btn" style="color: var(--color-danger);">
+                  🗑️ Eliminar Canción
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -348,11 +357,18 @@
               <button class="segmented-btn" id="btn-show-preview">👁️ Previsualización</button>
             </div>
 
-            <div class="chordpro-editor-layout">
+            <div class="chordpro-editor-layout" id="chordpro-layout-container">
               <div class="editor-pane-chords" id="pane-chord-editor">
-                <!-- Row 1: Header & Language Selector -->
+                <!-- Row 1: Header, Workspace View Switcher & Language Selector -->
                 <div class="pane-header">
-                  <h3>ChordPro Editor</h3>
+                  <div class="pane-header-title-group">
+                    <h3>ChordPro Editor</h3>
+                    <div class="workspace-view-switcher desktop-only" id="workspace-view-switcher">
+                      <button type="button" class="view-switch-btn active" id="btn-view-split" data-view="split" title="Vista Dividida (Editor + Previsualización)">◫ Dividido</button>
+                      <button type="button" class="view-switch-btn" id="btn-view-editor" data-view="editor" title="Solo Editor (Máxima Concentración)">▯ Editor</button>
+                      <button type="button" class="view-switch-btn" id="btn-view-preview" data-view="preview" title="Solo Previsualización">▯ Previa</button>
+                    </div>
+                  </div>
                   <div class="lang-selector-mini">
                     <button class="mini-lang-btn active" id="cifra-lang-es">ES</button>
                     <button class="mini-lang-btn" id="cifra-lang-pt">PT</button>
@@ -360,66 +376,86 @@
                   </div>
                 </div>
 
-                <!-- Row 2: 4 Metadata Fields in One Row -->
-                <div class="editor-metadata-row" id="editor-metadata-row">
-                  <div class="meta-field-item">
-                    <span class="meta-field-label">Tono:</span>
-                    <input type="text" id="cifra-key" class="meta-field-input" placeholder="Ej: F">
+                <!-- Row 2: Metadata Strip Compacto con Estado de Partituras -->
+                <div class="song-meta-strip" id="editor-metadata-row">
+                  <div class="meta-strip-item">
+                    <span class="meta-strip-label">Tono</span>
+                    <input type="text" id="cifra-key" class="meta-strip-input" placeholder="Ej: F">
                   </div>
-                  <div class="meta-field-item">
-                    <span class="meta-field-label">BPM:</span>
-                    <input type="number" id="cifra-bpm" class="meta-field-input" placeholder="75">
+                  <div class="meta-strip-item">
+                    <span class="meta-strip-label">BPM</span>
+                    <input type="number" id="cifra-bpm" class="meta-strip-input" placeholder="75">
                   </div>
-                  <div class="meta-field-item">
-                    <span class="meta-field-label">Compás:</span>
-                    <input type="text" id="cifra-tiempo" class="meta-field-input" placeholder="4/4">
+                  <div class="meta-strip-item">
+                    <span class="meta-strip-label">Compás</span>
+                    <input type="text" id="cifra-tiempo" class="meta-strip-input" placeholder="4/4">
                   </div>
-                  <div class="meta-field-item flex-grow">
-                    <span class="meta-field-label">Ritmo:</span>
-                    <input type="text" id="cifra-ritmo" class="meta-field-input" placeholder="Balada, Pop">
+                  <div class="meta-strip-item flex-grow">
+                    <span class="meta-strip-label">Ritmo</span>
+                    <input type="text" id="cifra-ritmo" class="meta-strip-input" placeholder="Balada, Pop">
+                  </div>
+                  <div class="meta-strip-item meta-strip-pdf" id="meta-strip-pdf-badge" title="Partitura oficial para este idioma">
+                    <span class="pdf-status-dot" id="meta-strip-pdf-dot"></span>
+                    <span class="meta-strip-pdf-text" id="meta-strip-pdf-text">Partitura</span>
                   </div>
                 </div>
 
-                <!-- Row 3: Quick Action Buttons Toolbar -->
+                <!-- Row 3: Toolbar Consolidado -->
                 <div class="chord-assistant-toolbar" id="chord-assistant-toolbar">
-                  <div class="toolbar-row toolbar-actions">
-                    <button type="button" class="btn btn-primary tool-action-btn" id="btn-open-chord-builder">
+                  <div class="toolbar-left-group">
+                    <button type="button" class="btn btn-secondary tool-action-btn" id="btn-open-chord-builder">
                       + Añadir Acorde
                     </button>
                     <button type="button" class="btn btn-secondary tool-action-btn" id="btn-mark-intro" title="Envolver selección con {start_of_intro} y {end_of_intro}">
-                      ✨ Marcar Intro
+                      ✨ Intro
                     </button>
                     <button type="button" class="btn btn-secondary tool-action-btn" id="btn-add-footnote" title="Copiar selección como fragmento para nota de referencia">
-                      📌 Añadir Nota
-                    </button>
-                    <input type="file" id="pdf-upload" accept="application/pdf" style="display: none;">
-                    <button type="button" class="btn btn-secondary tool-action-btn" id="btn-extract-pdf" title="Subir PDF Oficial para extraer acordes mágicamente con IA" style="background-color: #6366f1; color: white; border-color: #4f46e5;">
-                      ✨ Extraer PDF
-                    </button>
-                    <input type="file" id="pdf-attach-upload" accept="application/pdf" style="display: none;">
-                    <button type="button" class="btn btn-secondary tool-action-btn" id="btn-attach-pdf" title="Adjuntar partitura PDF oficial al servidor sin procesar con IA" style="background-color: #3b82f6; color: white; border-color: #2563eb;">
-                      📎 Adjuntar PDF
-                    </button>
-                    <input type="file" id="cifrado-upload" accept="image/*,application/pdf" style="display: none;">
-                    <button type="button" class="btn btn-secondary tool-action-btn" id="btn-extract-cifrado" title="Extraer desde Foto/Cifrado (o presiona Ctrl+V)" style="background-color: #10b981; color: white; border-color: #059669;">
-                      📸 Extraer Cifrado
-                    </button>
-                    <button type="button" class="btn btn-secondary tool-action-btn hidden" id="btn-reprocess-pdf" title="Reprocesar con IA la partitura guardada en el servidor sin tener que volver a subir el archivo" style="background-color: #8b5cf6; color: white; border-color: #7c3aed;">
-                      🔄 Reprocesar PDF
-                    </button>
-                    <button type="button" class="btn btn-secondary tool-action-btn hidden" id="btn-view-pdf" title="Ver Partitura Original">
-                      👁️ Ver Partitura
+                      📌 Nota
                     </button>
                   </div>
+
+                  <div class="toolbar-right-group">
+                    <div class="dropdown-wrapper" id="ai-tools-dropdown-container">
+                      <button type="button" class="btn btn-secondary tool-action-btn dropdown-toggle" id="btn-ai-tools-dropdown" aria-haspopup="true" aria-expanded="false">
+                        ✨ Asistente &amp; Partituras ▾
+                      </button>
+                      <div class="dropdown-menu-custom hidden" id="ai-tools-dropdown-menu">
+                        <div class="dropdown-section-title">Partitura Oficial (App)</div>
+                        <button type="button" class="dropdown-item hidden" id="btn-view-pdf">
+                          👁️ Ver Partitura Original
+                        </button>
+                        <button type="button" class="dropdown-item" id="btn-attach-pdf">
+                          📎 Adjuntar / Reemplazar PDF Oficial
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-section-title">Extracción Inteligente (IA)</div>
+                        <button type="button" class="dropdown-item" id="btn-extract-pdf">
+                          🪄 Extraer Acordes de PDF
+                        </button>
+                        <button type="button" class="dropdown-item" id="btn-extract-cifrado">
+                          📸 Extraer desde Foto/Cifrado (Ctrl+V)
+                        </button>
+                        <button type="button" class="dropdown-item hidden" id="btn-reprocess-pdf">
+                          🔄 Reprocesar Partitura con IA
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Inputs ocultos para carga de archivos -->
+                  <input type="file" id="pdf-upload" accept="application/pdf" style="display: none;">
+                  <input type="file" id="pdf-attach-upload" accept="application/pdf" style="display: none;">
+                  <input type="file" id="cifrado-upload" accept="image/*,application/pdf" style="display: none;">
                 </div>
 
                 <div id="pdf-extract-loading" class="hidden" style="padding: 10px; margin-bottom: 10px; background-color: #e0f2fe; color: #0369a1; border-radius: 4px; font-size: 14px;">
                   ⏳ Procesando PDF con IA (puede tardar unos 15 segundos)...
                 </div>
-                <div id="pdf-discrepancies-alert" class="hidden" style="padding: 10px; margin-bottom: 10px; background-color: #fef2f2; color: #991b1b; border: 1px solid #f87171; border-radius: 4px; font-size: 14px;">
+                <div id="pdf-discrepancies-alert" class="hidden discrepancies-alert-box">
+                  <button type="button" id="close-pdf-discrepancies-alert" class="btn-close-alert" title="Descartar este aviso">✕</button>
                   <strong>⚠️ ALERTA DE PRECISIÓN: Hay discrepancias entre las letras del PDF y tu base de datos.</strong>
                   <br/>El mapeo de acordes generado <strong>no es confiable</strong> porque la IA no pudo alinear correctamente el texto. Por favor, resuelve estas diferencias en el texto plano y vuelve a extraer el PDF.
-                  <ul id="pdf-discrepancies-list" style="margin-top: 5px; margin-bottom: 0; padding-left: 20px;"></ul>
+                  <ul id="pdf-discrepancies-list" style="margin-top: 6px; margin-bottom: 0; padding-left: 20px;"></ul>
                 </div>
 
                 <textarea id="chordpro-textarea" placeholder="Escribe el texto ChordPro aquí...&#10;Ejemplo:&#10;[F]En esta [C]hora de clamor"></textarea>
@@ -429,13 +465,58 @@
                     Las estrofas se extraerán automáticamente de los acordes al guardar/aprobar.
                   </span>
                 </div>
+
+                <!-- Mobile Keyboard Accessory Bar -->
+                <div class="mobile-keyboard-accessory mobile-only" id="mobile-keyboard-accessory">
+                  <button type="button" class="accessory-chip" data-char="[">[</button>
+                  <button type="button" class="accessory-chip" data-char="]">]</button>
+                  <button type="button" class="accessory-chip" data-char="#">#</button>
+                  <button type="button" class="accessory-chip" data-char="b">b</button>
+                  <button type="button" class="accessory-chip" data-char="/">/</button>
+                  <button type="button" class="accessory-chip action-chip" id="mobile-quick-chord">+ Acorde</button>
+                  <button type="button" class="accessory-chip action-chip" id="mobile-quick-intro">Intro</button>
+                </div>
               </div>
 
               <div class="preview-pane-chords" id="pane-chord-preview">
                 <div class="pane-header">
-                  <h3>Previsualización de App (Modo Cifrado)</h3>
+                  <div class="preview-header-left">
+                    <h3>Previsualización de App</h3>
+                    <div class="preview-mode-switch">
+                      <button type="button" class="preview-mode-btn active" id="btn-preview-mode-chords">📝 Cifrado</button>
+                      <button type="button" class="preview-mode-btn" id="btn-preview-mode-pdf">📄 Partitura PDF</button>
+                    </div>
+                  </div>
+                  <div class="preview-transpose-group" id="preview-transpose-group">
+                    <button type="button" class="btn-transpose" id="btn-transpose-down" title="Bajar medio tono (semitono)">-1</button>
+                    <span class="transpose-badge" id="transpose-current-key" title="Tono original">Orig</span>
+                    <button type="button" class="btn-transpose" id="btn-transpose-up" title="Subir medio tono (semitono)">+1</button>
+                  </div>
                 </div>
                 <div id="chords-preview" class="chords-preview-output"></div>
+                <div id="pdf-preview-pane" class="pdf-preview-pane hidden">
+                  <div id="pdf-preview-empty" class="pdf-preview-empty">
+                    <div class="empty-icon-wrap">🎼</div>
+                    <h4>No hay partitura oficial para este idioma</h4>
+                    <p>La aplicación móvil no podrá mostrar la vista de partitura hasta que adjuntes un PDF oficial.</p>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-pdf-preview-upload">+ Adjuntar Partitura PDF</button>
+                  </div>
+                  <div id="pdf-preview-active" class="pdf-preview-active hidden">
+                    <div class="pdf-preview-card">
+                      <div class="pdf-preview-card-header">
+                        <span class="pdf-card-badge" id="pdf-preview-lang-tag">ES</span>
+                        <div class="pdf-card-text">
+                          <h4 id="pdf-preview-title">Partitura Oficial</h4>
+                          <span id="pdf-preview-meta-info">Documento PDF oficial en el servidor</span>
+                        </div>
+                      </div>
+                      <div class="pdf-preview-card-actions">
+                        <button type="button" class="btn btn-primary" id="btn-pdf-preview-open">Abrir Partitura en Nueva Pestaña ↗</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-pdf-preview-replace">Reemplazar Archivo</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1041,6 +1122,6 @@
     </div>
   </div>
 
-  <script type="module" src="./app.js?v=2.2.5"></script>
+  <script type="module" src="./app.js?v=2.2.6"></script>
 </body>
 </html>
