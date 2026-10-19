@@ -727,9 +727,15 @@ if ($path === '/pdf-extract' && $request_method === 'POST') {
     $letras = $_POST['letras'] ?? '';
     $cancionId = $_POST['cancion_id'] ?? 'temp';
     $modo = $_POST['modo'] ?? 'partitura';
+    $idioma = strtolower(trim($_POST['idioma'] ?? 'es'));
+    if (!in_array($idioma, ['es', 'pt', 'en'])) {
+        $idioma = 'es';
+    }
     $reprocess = isset($_POST['reprocess']) && filter_var($_POST['reprocess'], FILTER_VALIDATE_BOOLEAN);
 
-    $fileName = "cancion_" . preg_replace('/[^a-zA-Z0-9_-]/', '', $cancionId) . ".pdf";
+    $cleanId = preg_replace('/[^a-zA-Z0-9_-]/', '', $cancionId);
+    $fileName = "cancion_" . $cleanId . "_" . $idioma . ".pdf";
+    $fileNameLegacy = "cancion_" . $cleanId . ".pdf";
     $partituras_dir = dirname(__DIR__) . '/assets/partituras';
     $destPath = $partituras_dir . '/' . $fileName;
 
@@ -737,6 +743,10 @@ if ($path === '/pdf-extract' && $request_method === 'POST') {
     $mimeType = 'application/pdf';
 
     if ($reprocess) {
+        if (!file_exists($destPath) && file_exists($partituras_dir . '/' . $fileNameLegacy)) {
+            $destPath = $partituras_dir . '/' . $fileNameLegacy;
+            $fileName = $fileNameLegacy;
+        }
         if (!file_exists($destPath)) {
             json_response(["error" => "No se encontró una partitura guardada en el servidor para esta canción"], 404);
         }
@@ -766,6 +776,9 @@ if ($path === '/pdf-extract' && $request_method === 'POST') {
                 @mkdir($partituras_dir, 0755, true);
             }
             move_uploaded_file($_FILES['pdf']['tmp_name'], $destPath);
+            if ($idioma === 'es') {
+                @copy($destPath, $partituras_dir . '/' . $fileNameLegacy);
+            }
         }
     }
     $geminiApiKey = $_ENV['GEMINI_API_KEY'] ?? '';
@@ -901,12 +914,20 @@ if ($path === '/pdf-upload' && $request_method === 'POST') {
         json_response(["error" => "ID de alabanza no válido para asociar la partitura"], 400);
     }
 
+    $idioma = strtolower(trim($_POST['idioma'] ?? 'es'));
+    if (!in_array($idioma, ['es', 'pt', 'en'])) {
+        $idioma = 'es';
+    }
+
     $detectedMime = mime_content_type($_FILES['pdf']['tmp_name']);
     if ($detectedMime && !in_array($detectedMime, ['application/pdf', 'application/x-pdf', 'application/octet-stream'])) {
         json_response(["error" => "El archivo debe ser un documento PDF"], 400);
     }
 
-    $fileName = "cancion_" . preg_replace('/[^a-zA-Z0-9_-]/', '', $cancionId) . ".pdf";
+    $cleanId = preg_replace('/[^a-zA-Z0-9_-]/', '', $cancionId);
+    $fileName = "cancion_" . $cleanId . "_" . $idioma . ".pdf";
+    $fileNameLegacy = "cancion_" . $cleanId . ".pdf";
+
     $partituras_dir = dirname(__DIR__) . '/assets/partituras';
     if (!is_dir($partituras_dir)) {
         @mkdir($partituras_dir, 0755, true);
@@ -917,8 +938,13 @@ if ($path === '/pdf-upload' && $request_method === 'POST') {
         json_response(["error" => "Error al guardar el archivo en el servidor"], 500);
     }
 
+    if ($idioma === 'es') {
+        @copy($destPath, $partituras_dir . '/' . $fileNameLegacy);
+    }
+
     json_response([
         "success" => true,
+        "idioma" => $idioma,
         "pdf_url" => '/assets/partituras/' . $fileName
     ]);
 }
@@ -990,11 +1016,21 @@ if (preg_match('/^\/songs\/(-?\d+)$/', $path, $matches) && $request_method === '
         json_response(["error" => "Alabanza no encontrada"], 404);
     }
     
-    $partitura_url = null;
-    $possible_pdf = dirname(__DIR__) . '/assets/partituras/cancion_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $songId) . '.pdf';
-    if (file_exists($possible_pdf)) {
-        $partitura_url = '/assets/partituras/cancion_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $songId) . '.pdf';
+    $cleanSongId = preg_replace('/[^a-zA-Z0-9_-]/', '', $songId);
+    $partituras_dir = dirname(__DIR__) . '/assets/partituras';
+    $partituras_urls = [];
+    foreach (['es', 'pt', 'en'] as $l) {
+        $lPath = $partituras_dir . '/cancion_' . $cleanSongId . '_' . $l . '.pdf';
+        if (file_exists($lPath)) {
+            $partituras_urls[$l] = '/assets/partituras/cancion_' . $cleanSongId . '_' . $l . '.pdf';
+        }
     }
+    $legacyPath = $partituras_dir . '/cancion_' . $cleanSongId . '.pdf';
+    if (file_exists($legacyPath) && empty($partituras_urls['es'])) {
+        $partituras_urls['es'] = '/assets/partituras/cancion_' . $cleanSongId . '.pdf';
+    }
+
+    $partitura_url = $partituras_urls['es'] ?? (reset($partituras_urls) ?: null);
 
     json_response([
         "production" => $prodSong,
@@ -1005,7 +1041,8 @@ if (preg_match('/^\/songs\/(-?\d+)$/', $path, $matches) && $request_method === '
             "modificado_en" => $draft['modificado_en'],
             "data" => json_decode($draft['data_json'], true)
         ] : null,
-        "partitura_url" => $partitura_url
+        "partitura_url" => $partitura_url,
+        "partituras_urls" => $partituras_urls
     ]);
 }
 

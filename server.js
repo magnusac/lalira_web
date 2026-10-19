@@ -685,12 +685,21 @@ app.get('/api/songs/:id', authenticateToken, (req, res) => {
       return res.status(404).json({ error: 'Alabanza no encontrada' });
     }
 
-    let partitura_url = null;
     const sanitizedId = String(songId).replace(/[^a-zA-Z0-9_-]/g, '');
-    const possiblePdf = path.join(__dirname, 'assets', 'partituras', `cancion_${sanitizedId}.pdf`);
-    if (fs.existsSync(possiblePdf)) {
-      partitura_url = `/assets/partituras/cancion_${sanitizedId}.pdf`;
+    const partiturasDir = path.join(__dirname, 'assets', 'partituras');
+    const partiturasUrls = {};
+    for (const l of ['es', 'pt', 'en']) {
+      const langPdf = path.join(partiturasDir, `cancion_${sanitizedId}_${l}.pdf`);
+      if (fs.existsSync(langPdf)) {
+        partiturasUrls[l] = `/assets/partituras/cancion_${sanitizedId}_${l}.pdf`;
+      }
     }
+    const legacyPdf = path.join(partiturasDir, `cancion_${sanitizedId}.pdf`);
+    if (fs.existsSync(legacyPdf) && !partiturasUrls['es']) {
+      partiturasUrls['es'] = `/assets/partituras/cancion_${sanitizedId}.pdf`;
+    }
+
+    const partitura_url = partiturasUrls['es'] || Object.values(partiturasUrls)[0] || null;
 
     res.json({
       production: prodSong,
@@ -701,7 +710,8 @@ app.get('/api/songs/:id', authenticateToken, (req, res) => {
         modificado_en: draft.modificado_en,
         data: JSON.parse(draft.data_json)
       } : null,
-      partitura_url: partitura_url
+      partitura_url: partitura_url,
+      partituras_urls: partiturasUrls
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
