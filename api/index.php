@@ -633,50 +633,86 @@ function getProductionSong($dbCatalog, $songId) {
     return $song;
 }
 
-function call_gemini_with_fallback($payload, $apiKey, $primaryModel = 'gemini-3.8-flash', $fallbackModel = 'gemini-3.6-flash') {
-    $models = array_unique([$primaryModel, $fallbackModel]);
+function call_gemini_with_fallback($payload, $apiKey, $preferredModel = null) {
+    // Pool of models ordered by speed, accuracy, and availability.
+    // Each model has its own independent Google serving pool and per-model RPM quota.
+    // Capping thinkingBudget prevents unbounded internal thinking tokens (the #1 cause of 503s and timeouts).
+    $modelConfigs = [
+        ['model' => 'gemini-3.6-flash', 'thinkingBudget' => 0,   'timeout' => 22],
+        ['model' => 'gemini-3.7-flash', 'thinkingBudget' => 0,   'timeout' => 22],
+        ['model' => 'gemini-3.8-flash', 'thinkingBudget' => 256, 'timeout' => 25],
+        // Final retry on 3.6-flash after all others have been tried
+        ['model' => 'gemini-3.6-flash', 'thinkingBudget' => 0,   'timeout' => 25, 'delayBeforeMs' => 2000],
+    ];
+
+    if (!empty($preferredModel) && $preferredModel !== 'gemini-3.6-flash') {
+        array_unshift($modelConfigs, [
+            'model' => $preferredModel,
+            'thinkingBudget' => ($preferredModel === 'gemini-3.8-flash') ? 256 : 0,
+            'timeout' => 22
+        ]);
+    }
+
     $lastResponse = null;
     $lastHttpCode = 0;
-    
-    foreach ($models as $model) {
-        $maxRetries = 2;
-        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/" . $model . ":generateContent?key=" . $apiKey;
-            
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-            
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            $lastResponse = $response;
-            $lastHttpCode = $httpCode;
-            
-            if ($httpCode === 200) {
+
+    foreach ($modelConfigs as $index => $cfg) {
+        if (!empty($cfg['delayBeforeMs'])) {
+            usleep($cfg['delayBeforeMs'] * 1000);
+        } elseif ($index > 0) {
+            // Brief 400ms pause when failing over to the next model pool
+            usleep(400000);
+        }
+
+        $model = $cfg['model'];
+        $attemptPayload = $payload;
+        $attemptPayload['generationConfig']['temperature'] = 0.1;
+        if (isset($cfg['thinkingBudget']) && $cfg['thinkingBudget'] !== null) {
+            $attemptPayload['generationConfig']['thinkingConfig'] = [
+                'thinkingBudget' => $cfg['thinkingBudget']
+            ];
+        }
+
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/" . $model . ":generateContent?key=" . $apiKey;
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($attemptPayload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $cfg['timeout'] ?? 22);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        $lastResponse = $response;
+        $lastHttpCode = $httpCode;
+
+        if ($httpCode === 200 && !empty($response)) {
+            $decoded = json_decode($response, true);
+            $textPart = $decoded['candidates'][0]['content']['parts'][0]['text'] ?? null;
+            if ($textPart && json_decode($textPart, true)) {
                 return [
                     'success' => true,
                     'response' => $response,
                     'model' => $model,
-                    'attempts' => $attempt
+                    'attempts' => $index + 1
                 ];
             }
-            
-            // Retry on 503 (Unavailable) or 429 (Rate limit)
-            if (in_array($httpCode, [429, 503]) && $attempt < $maxRetries) {
-                usleep(1500000 * $attempt); // 1.5s, 3s backoff
-                continue;
-            }
-            
+        }
+
+        // Fail over to next model on 503 (Unavailable), 429 (Quota/Rate limit for this model), 500/502/504, or 0 (cURL timeout)
+        if (in_array($httpCode, [0, 429, 500, 502, 503, 504])) {
+            continue;
+        }
+
+        // For 400/401/403 client errors, stop immediately unless it was a model-specific parameter issue
+        if ($httpCode === 401 || $httpCode === 403) {
             break;
         }
     }
-    
+
     return [
         'success' => false,
         'response' => $lastResponse,
@@ -688,27 +724,49 @@ function call_gemini_with_fallback($payload, $apiKey, $primaryModel = 'gemini-3.
 if ($path === '/pdf-extract' && $request_method === 'POST') {
     $user = require_auth();
     
-    if (!isset($_FILES['pdf']) || $_FILES['pdf']['error'] !== UPLOAD_ERR_OK) {
-        json_response(["error" => "Archivo no proporcionado o inválido"], 400);
-    }
-    
     $letras = $_POST['letras'] ?? '';
     $cancionId = $_POST['cancion_id'] ?? 'temp';
     $modo = $_POST['modo'] ?? 'partitura';
-    
-    $mimeType = mime_content_type($_FILES['pdf']['tmp_name']);
-    if (!$mimeType) $mimeType = 'application/pdf';
-    
-    $pdfBase64 = base64_encode(file_get_contents($_FILES['pdf']['tmp_name']));
-    
+    $reprocess = isset($_POST['reprocess']) && filter_var($_POST['reprocess'], FILTER_VALIDATE_BOOLEAN);
+
     $fileName = "cancion_" . preg_replace('/[^a-zA-Z0-9_-]/', '', $cancionId) . ".pdf";
-    if ($modo === 'partitura') {
-        $partituras_dir = dirname(__DIR__) . '/assets/partituras';
-        if (!is_dir($partituras_dir)) {
-            @mkdir($partituras_dir, 0755, true);
+    $partituras_dir = dirname(__DIR__) . '/assets/partituras';
+    $destPath = $partituras_dir . '/' . $fileName;
+
+    $pdfBase64 = null;
+    $mimeType = 'application/pdf';
+
+    if ($reprocess) {
+        if (!file_exists($destPath)) {
+            json_response(["error" => "No se encontró una partitura guardada en el servidor para esta canción"], 404);
         }
-        $destPath = $partituras_dir . '/' . $fileName;
-        move_uploaded_file($_FILES['pdf']['tmp_name'], $destPath);
+        $detectedMime = mime_content_type($destPath);
+        if ($detectedMime) $mimeType = $detectedMime;
+        $fileBytes = file_get_contents($destPath);
+        if ($fileBytes === false) {
+            json_response(["error" => "Error al leer el archivo de partitura del servidor"], 500);
+        }
+        $pdfBase64 = base64_encode($fileBytes);
+    } else {
+        if (!isset($_FILES['pdf']) || $_FILES['pdf']['error'] !== UPLOAD_ERR_OK) {
+            json_response(["error" => "Archivo no proporcionado o inválido"], 400);
+        }
+        
+        $detectedMime = mime_content_type($_FILES['pdf']['tmp_name']);
+        if ($detectedMime) $mimeType = $detectedMime;
+        
+        $fileBytes = file_get_contents($_FILES['pdf']['tmp_name']);
+        if ($fileBytes === false) {
+            json_response(["error" => "Error al leer el archivo subido"], 500);
+        }
+        $pdfBase64 = base64_encode($fileBytes);
+        
+        if ($modo === 'partitura') {
+            if (!is_dir($partituras_dir)) {
+                @mkdir($partituras_dir, 0755, true);
+            }
+            move_uploaded_file($_FILES['pdf']['tmp_name'], $destPath);
+        }
     }
     $geminiApiKey = $_ENV['GEMINI_API_KEY'] ?? '';
     
@@ -805,13 +863,8 @@ Texto Plano proporcionado:
         ]
     ];
     
-    $primaryModel = $_ENV['GEMINI_MODEL'] ?? 'gemini-3.8-flash';
-    $fallbackModel = 'gemini-3.6-flash';
-    if ($primaryModel === $fallbackModel) {
-        $fallbackModel = 'gemini-3.1-flash-lite';
-    }
-    
-    $result = call_gemini_with_fallback($payload, $geminiApiKey, $primaryModel, $fallbackModel);
+    $preferredModel = $_ENV['GEMINI_MODEL'] ?? null;
+    $result = call_gemini_with_fallback($payload, $geminiApiKey, $preferredModel);
     
     if ($result['success']) {
         $data = json_decode($result['response'], true);
@@ -833,6 +886,41 @@ Texto Plano proporcionado:
             "details" => $result['response']
         ], 500);
     }
+}
+
+// POST /pdf-upload
+if ($path === '/pdf-upload' && $request_method === 'POST') {
+    $user = require_auth();
+
+    if (!isset($_FILES['pdf']) || $_FILES['pdf']['error'] !== UPLOAD_ERR_OK) {
+        json_response(["error" => "Archivo no proporcionado o inválido"], 400);
+    }
+
+    $cancionId = $_POST['cancion_id'] ?? null;
+    if (!$cancionId || $cancionId === 'temp') {
+        json_response(["error" => "ID de alabanza no válido para asociar la partitura"], 400);
+    }
+
+    $detectedMime = mime_content_type($_FILES['pdf']['tmp_name']);
+    if ($detectedMime && !in_array($detectedMime, ['application/pdf', 'application/x-pdf', 'application/octet-stream'])) {
+        json_response(["error" => "El archivo debe ser un documento PDF"], 400);
+    }
+
+    $fileName = "cancion_" . preg_replace('/[^a-zA-Z0-9_-]/', '', $cancionId) . ".pdf";
+    $partituras_dir = dirname(__DIR__) . '/assets/partituras';
+    if (!is_dir($partituras_dir)) {
+        @mkdir($partituras_dir, 0755, true);
+    }
+
+    $destPath = $partituras_dir . '/' . $fileName;
+    if (!move_uploaded_file($_FILES['pdf']['tmp_name'], $destPath)) {
+        json_response(["error" => "Error al guardar el archivo en el servidor"], 500);
+    }
+
+    json_response([
+        "success" => true,
+        "pdf_url" => '/assets/partituras/' . $fileName
+    ]);
 }
 
 // POST /songs
@@ -980,6 +1068,29 @@ if (preg_match('/^\/drafts\/(-?\d+)\/reject$/', $path, $matches) && $request_met
     }
     
     log_audit($dbCms, $user['id'], 'REJECT', $songId, "Borrador rechazado. Motivo: " . $motivo);
+    json_response(["success" => true]);
+}
+
+// DELETE /drafts/:songId
+if (preg_match('/^\/drafts\/(-?\d+)$/', $path, $matches) && $request_method === 'DELETE') {
+    $user = require_auth();
+    $songId = (int)$matches[1];
+    
+    $draftStmt = $dbCms->prepare("SELECT * FROM draft_hymn WHERE cancion_id = ?");
+    $draftStmt->execute([$songId]);
+    $draft = $draftStmt->fetch();
+    if (!$draft) {
+        json_response(["error" => "Borrador no encontrado"], 404);
+    }
+    
+    if ($user['rol'] !== 'admin' && (int)$draft['editor_id'] !== (int)$user['id']) {
+        json_response(["error" => "No tienes permisos para descartar el borrador de otro usuario"], 403);
+    }
+    
+    $delStmt = $dbCms->prepare("DELETE FROM draft_hymn WHERE cancion_id = ?");
+    $delStmt->execute([$songId]);
+    
+    log_audit($dbCms, $user['id'], 'DISCARD_DRAFT', $songId, "Borrador descartado.");
     json_response(["success" => true]);
 }
 
@@ -1376,6 +1487,8 @@ if ($path === '/publish' && $request_method === 'POST') {
             'publish_dir' => $catalog_publish_dir,
             'public_base_url' => $catalog_public_base_url,
             'assets_db_path' => $assets_db_path,
+            'partituras_dir' => dirname(__DIR__) . '/assets/partituras',
+            'media_base_url' => 'https://lalira.app/assets/partituras',
         ]);
     } catch (CatalogPublishException $e) {
         log_audit($dbCms, $user['id'], 'PUBLISH_FAILED', null, $e->getMessage());

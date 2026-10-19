@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>La Lira CMS — Portal de Edición</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css?v=2.2.1">
+  <link rel="stylesheet" href="./style.css?v=2.2.4">
   <link rel="shortcut icon" href="../assets/logo.svg" type="image/svg+xml">
   <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
   <link rel="apple-touch-icon" href="../assets/logo.svg">
@@ -309,6 +309,9 @@
             <button id="submit-approval-btn" class="btn btn-primary">
               Enviar a Aprobación
             </button>
+            <button id="discard-draft-btn" class="btn btn-secondary hidden" style="color: var(--color-danger); border-color: rgba(231, 76, 60, 0.4);" title="Descartar borrador y restaurar versión oficial">
+              Descartar Borrador
+            </button>
             
             <!-- Admin approval operations -->
             <div id="admin-approval-actions" class="admin-approval-group admin-only hidden">
@@ -393,9 +396,16 @@
                     <button type="button" class="btn btn-secondary tool-action-btn" id="btn-extract-pdf" title="Subir PDF Oficial para extraer acordes mágicamente con IA" style="background-color: #6366f1; color: white; border-color: #4f46e5;">
                       ✨ Extraer PDF
                     </button>
+                    <input type="file" id="pdf-attach-upload" accept="application/pdf" style="display: none;">
+                    <button type="button" class="btn btn-secondary tool-action-btn" id="btn-attach-pdf" title="Adjuntar partitura PDF oficial al servidor sin procesar con IA" style="background-color: #3b82f6; color: white; border-color: #2563eb;">
+                      📎 Adjuntar PDF
+                    </button>
                     <input type="file" id="cifrado-upload" accept="image/*,application/pdf" style="display: none;">
                     <button type="button" class="btn btn-secondary tool-action-btn" id="btn-extract-cifrado" title="Extraer desde Foto/Cifrado (o presiona Ctrl+V)" style="background-color: #10b981; color: white; border-color: #059669;">
                       📸 Extraer Cifrado
+                    </button>
+                    <button type="button" class="btn btn-secondary tool-action-btn hidden" id="btn-reprocess-pdf" title="Reprocesar con IA la partitura guardada en el servidor sin tener que volver a subir el archivo" style="background-color: #8b5cf6; color: white; border-color: #7c3aed;">
+                      🔄 Reprocesar PDF
                     </button>
                     <button type="button" class="btn btn-secondary tool-action-btn hidden" id="btn-view-pdf" title="Ver Partitura Original">
                       👁️ Ver Partitura
@@ -661,6 +671,7 @@
         <div class="mobile-floating-actions mobile-only" id="mobile-floating-actions">
           <button type="button" id="mobile-save-draft-btn" class="btn btn-secondary btn-touch">💾 Guardar</button>
           <button type="button" id="mobile-submit-approval-btn" class="btn btn-primary btn-touch">🚀 Enviar</button>
+          <button type="button" id="mobile-discard-draft-btn" class="btn btn-secondary btn-touch hidden" style="color: var(--color-danger);" title="Descartar Borrador">🗑️ Descartar</button>
           <div id="mobile-admin-approval-actions" class="mobile-admin-actions admin-only hidden" style="display: flex; gap: 8px; flex: 1;">
             <button type="button" id="mobile-approve-btn" class="btn btn-success btn-touch" title="Aprobar borrador">✅ Aprobar</button>
             <button type="button" id="mobile-reject-btn" class="btn btn-danger btn-touch" title="Rechazar">❌ Rechazar</button>
@@ -920,6 +931,74 @@
     </div>
   </div>
 
+  <!-- Modal for PDF Discrepancies Audit -->
+  <div id="pdf-audit-modal" class="modal-overlay hidden" style="z-index: 3600;">
+    <div class="modal-card pdf-audit-modal-card">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.25rem;">🔍</span>
+          <h2 style="margin: 0; font-size: 1.15rem;">Auditoría de Partitura vs Cifras Actuales</h2>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="close-pdf-audit-x" title="Cerrar sin aplicar">✕</button>
+      </div>
+
+      <div class="modal-body pdf-audit-body">
+        <p style="font-size: 0.85rem; color: var(--color-text-muted); margin: 0 0 14px 0;">
+          Esta alabanza ya cuenta con cifras registradas. Revisa las discrepancias encontradas en la partitura antes de decidir si deseas insertarlas o conservar tus datos actuales.
+        </p>
+
+        <!-- Section 1: Metadata Comparison -->
+        <div class="audit-section">
+          <div class="audit-section-header">
+            <span class="audit-section-title">1. Comparativa de Metadatos</span>
+          </div>
+          <div class="audit-meta-grid" id="audit-meta-grid">
+            <!-- Dynamic comparative cards generated via JS -->
+          </div>
+        </div>
+
+        <!-- Section 2: Lyric / Text Discrepancies (from Gemini) -->
+        <div class="audit-section" id="audit-lyrics-discrepancies-section">
+          <div class="audit-section-header">
+            <span class="audit-section-title">2. Discrepancias de Letra en Partitura (IA)</span>
+          </div>
+          <div id="audit-lyrics-discrepancies-content">
+            <!-- Discrepancies list or success badge -->
+          </div>
+        </div>
+
+        <!-- Section 3: ChordPro Diff -->
+        <div class="audit-section">
+          <div class="audit-section-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="audit-section-title">3. Comparativa de Acordes (ChordPro)</span>
+            <div style="display: flex; gap: 12px; font-size: 0.75rem;">
+              <span style="color: var(--color-primary); font-weight: 600;">- Actual en editor</span>
+              <span style="color: var(--color-success); font-weight: 600;">+ Detectado en PDF</span>
+            </div>
+          </div>
+          <div class="audit-diff-viewer" id="audit-diff-viewer">
+            <!-- Line by line diff -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer pdf-audit-footer">
+        <button type="button" class="btn btn-secondary" id="btn-audit-discard">
+          ✕ Descartar y Conservar
+        </button>
+        <button type="button" class="btn btn-secondary" id="btn-audit-copy" title="Copiar el texto ChordPro detectado al portapapeles">
+          📋 Copiar ChordPro
+        </button>
+        <button type="button" class="btn btn-secondary" id="btn-audit-apply-meta" title="Actualiza solo Tono, BPM, Compás y Ritmo sin modificar tus acordes" style="background-color: #fef3c7; color: #92400e; border-color: #fcd34d;">
+          ⚡ Aplicar Solo Metadatos
+        </button>
+        <button type="button" class="btn btn-primary" id="btn-audit-apply-all" title="Sobrescribe el editor y metadatos con el análisis del PDF">
+          ✓ Reemplazar Todo en Editor
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal for Mobile Navigation & Admin Actions -->
   <div id="mobile-nav-modal" class="modal-overlay hidden">
     <div class="modal-card mobile-nav-card">
@@ -962,6 +1041,6 @@
     </div>
   </div>
 
-  <script type="module" src="./app.js?v=2.2.1"></script>
+  <script type="module" src="./app.js?v=2.2.5"></script>
 </body>
 </html>

@@ -282,6 +282,52 @@ function catalog_publish(array $config) {
         if (!rename($tmp, $finalPath)) throw new CatalogPublishException("No se pudo finalizar el snapshot.");
         $tmp = null;
 
+        // Build or scan sheet music manifest if partituras directory or config exists
+        $partituras = $previous['partituras'] ?? [];
+        $candidates = [];
+        if (!empty($config['partituras_dir'])) $candidates[] = $config['partituras_dir'];
+        $candidates[] = dirname($publishDir) . '/assets/partituras';
+        $candidates[] = dirname(__DIR__) . '/assets/partituras';
+        $candidates[] = dirname($publishDir) . '/uploads/partituras';
+
+        $foundDir = null;
+        foreach ($candidates as $cand) {
+            if (is_dir($cand)) {
+                $foundDir = $cand;
+                break;
+            }
+        }
+
+        if ($foundDir) {
+            $dbForMeta = null;
+            try {
+                $dbForMeta = new PDO("sqlite:" . $finalPath);
+            } catch (Exception $e) {
+                // Ignore if cannot open
+            }
+
+            foreach (glob($foundDir . '/*.pdf') as $pdfFile) {
+                $base = basename($pdfFile);
+                if (preg_match('/^(?:cancion_|himno_)?(\d+)(?:_[a-f0-9]+)?\.pdf$/i', $base, $pm)) {
+                    $val = (string)$pm[1];
+                    $partituras[$val] = $base;
+                    if ($dbForMeta) {
+                        try {
+                            $stmt = $dbForMeta->prepare("SELECT id, numero_en_himnario FROM cancion WHERE id = ? OR numero_en_himnario = ?");
+                            $stmt->execute([$val, $val]);
+                            while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                if (!empty($r['id'])) $partituras[(string)$r['id']] = $base;
+                                if (!empty($r['numero_en_himnario'])) $partituras[(string)$r['numero_en_himnario']] = $base;
+                            }
+                        } catch (Exception $e) {
+                            // Best-effort
+                        }
+                    }
+                }
+            }
+            $dbForMeta = null;
+        }
+
         // Fields are only ever added; version, url and size are read by released app binaries.
         $manifest = array_merge($previous, [
             'version' => $label,
@@ -292,6 +338,12 @@ function catalog_publish(array $config) {
             'md5' => $md5,
             'publishedAt' => $now->format(DateTimeInterface::ATOM),
         ]);
+
+        if (!empty($partituras)) {
+            $defaultMediaUrl = 'https://lalira.app/assets/partituras';
+            $manifest['mediaBaseUrl'] = rtrim($config['media_base_url'] ?? $defaultMediaUrl, '/');
+            $manifest['partituras'] = $partituras;
+        }
         catalog_write_atomic($versionPath, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
 
         if (!empty($config['assets_db_path'])) {

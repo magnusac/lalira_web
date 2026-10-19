@@ -64,6 +64,7 @@ const dashboardPanel = document.getElementById('dashboard-panel');
 const sidebarDashboardBtn = document.getElementById('sidebar-dashboard-btn');
 const saveDraftBtn = document.getElementById('save-draft-btn');
 const submitApprovalBtn = document.getElementById('submit-approval-btn');
+const discardDraftBtn = document.getElementById('discard-draft-btn');
 const adminApprovalActions = document.getElementById('admin-approval-actions');
 const approveBtn = document.getElementById('approve-btn');
 const rejectBtn = document.getElementById('reject-btn');
@@ -262,9 +263,10 @@ function setupEventListeners() {
     if (targetObj) targetObj.cifras[state.currentCifraLang].ritmo = e.target.value;
   });
 
-  // Save Draft, Submit, Approve, Reject buttons
+  // Save Draft, Submit, Discard, Approve, Reject buttons
   saveDraftBtn.addEventListener('click', () => saveDraftSong(false));
   submitApprovalBtn.addEventListener('click', () => saveDraftSong(true));
+  if (discardDraftBtn) discardDraftBtn.addEventListener('click', discardDraftSong);
   approveBtn.addEventListener('click', approveDraftSong);
   rejectBtn.addEventListener('click', rejectDraftSong);
   const deleteSongBtn = document.getElementById('delete-song-btn');
@@ -372,6 +374,12 @@ function setupEventListeners() {
       if (rejectBtn) rejectBtn.click();
     });
   }
+  const mobileDiscardDraftBtn = document.getElementById('mobile-discard-draft-btn');
+  if (mobileDiscardDraftBtn) {
+    mobileDiscardDraftBtn.addEventListener('click', () => {
+      if (discardDraftBtn) discardDraftBtn.click();
+    });
+  }
   const mobileDeleteSongBtn = document.getElementById('mobile-delete-song-btn');
   if (mobileDeleteSongBtn) {
     mobileDeleteSongBtn.addEventListener('click', () => {
@@ -438,18 +446,86 @@ function setupEventListeners() {
   // PDF Extraction Logic
   const btnExtractPdf = document.getElementById('btn-extract-pdf');
   const pdfUpload = document.getElementById('pdf-upload');
+  const btnAttachPdf = document.getElementById('btn-attach-pdf');
+  const pdfAttachUpload = document.getElementById('pdf-attach-upload');
+  const btnReprocessPdf = document.getElementById('btn-reprocess-pdf');
   const btnViewPdf = document.getElementById('btn-view-pdf');
   const pdfExtractLoading = document.getElementById('pdf-extract-loading');
   const pdfDiscrepanciesAlert = document.getElementById('pdf-discrepancies-alert');
   const pdfDiscrepanciesList = document.getElementById('pdf-discrepancies-list');
   
+  // PDF Discrepancies Audit Modal Elements
+  const pdfAuditModal = document.getElementById('pdf-audit-modal');
+  const closePdfAuditX = document.getElementById('close-pdf-audit-x');
+  const btnAuditDiscard = document.getElementById('btn-audit-discard');
+  const btnAuditCopy = document.getElementById('btn-audit-copy');
+  const btnAuditApplyMeta = document.getElementById('btn-audit-apply-meta');
+  const btnAuditApplyAll = document.getElementById('btn-audit-apply-all');
+  const auditMetaGrid = document.getElementById('audit-meta-grid');
+  const auditLyricsContent = document.getElementById('audit-lyrics-discrepancies-content');
+  const auditDiffViewer = document.getElementById('audit-diff-viewer');
+
   const btnExtractCifrado = document.getElementById('btn-extract-cifrado');
   const cifradoUpload = document.getElementById('cifrado-upload');
 
-  async function processAiExtraction(file, modo) {
+  async function uploadPdfOnly(file) {
     if (!file) return;
+    const songId = state.currentSongId !== undefined ? state.currentSongId : (state.currentSong?.id || null);
+    if (!songId || songId === 'temp') {
+      showToast('Selecciona o guarda la canción antes de adjuntar una partitura.', true);
+      if (pdfAttachUpload) pdfAttachUpload.value = '';
+      return;
+    }
+
     const formData = new FormData();
     formData.append('pdf', file);
+    formData.append('cancion_id', songId);
+
+    showToast('Subiendo partitura al servidor...', false);
+    try {
+      const response = await fetch(`${API_BASE}/pdf-upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${state.token}` },
+        body: formData
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al subir partitura');
+      }
+
+      state.currentSong = state.currentSong || {};
+      state.currentSong.partitura_url = data.pdf_url;
+      if (state.activeDraft && state.activeDraft.data) {
+        state.activeDraft.data.partitura_url = data.pdf_url;
+      }
+
+      if (btnViewPdf) {
+        btnViewPdf.classList.remove('hidden');
+        btnViewPdf.onclick = () => window.open(data.pdf_url, '_blank');
+      }
+      if (btnReprocessPdf) {
+        btnReprocessPdf.classList.remove('hidden');
+      }
+
+      showToast('Partitura guardada en el servidor. Puedes verla o procesarla con IA.', false);
+      saveDraftSong();
+    } catch (err) {
+      showToast(err.message, true);
+    } finally {
+      if (pdfAttachUpload) pdfAttachUpload.value = '';
+    }
+  }
+
+  async function processAiExtraction(file, modo, reprocess = false) {
+    if (!file && !reprocess) return;
+    const formData = new FormData();
+    if (file) {
+      formData.append('pdf', file);
+    }
+    if (reprocess) {
+      formData.append('reprocess', 'true');
+    }
     formData.append('modo', modo);
     
     let plainLyrics = "";
@@ -457,9 +533,15 @@ function setupEventListeners() {
     plainLyrics = sourceStanzas.filter(s => s.idioma === state.currentCifraLang).map(s => s.texto).join("\n\n");
     
     formData.append('letras', plainLyrics);
-    formData.append('cancion_id', state.currentSong ? state.currentSong.id : 'temp');
+    const activeSongId = state.currentSongId !== undefined ? state.currentSongId : (state.currentSong?.id || 'temp');
+    formData.append('cancion_id', activeSongId);
     
-    pdfExtractLoading.classList.remove('hidden');
+    if (pdfExtractLoading) {
+      pdfExtractLoading.textContent = reprocess 
+        ? '⏳ Reprocesando partitura del servidor con IA (puede tardar unos 15 segundos)...' 
+        : '⏳ Procesando PDF con IA (puede tardar unos 15 segundos)...';
+      pdfExtractLoading.classList.remove('hidden');
+    }
     pdfDiscrepanciesAlert.classList.add('hidden');
     pdfDiscrepanciesList.innerHTML = '';
     
@@ -488,22 +570,73 @@ function setupEventListeners() {
         throw new Error(errorMsg);
       }
       
-      document.getElementById('cifra-key').value = data.tonalidad || '';
-      document.getElementById('cifra-bpm').value = data.bpm || '';
-      document.getElementById('cifra-tiempo').value = data.tiempo || '';
-      document.getElementById('cifra-ritmo').value = data.ritmo || '';
-      document.getElementById('chordpro-textarea').value = data.chordpro || '';
-      
       if (modo === 'partitura' && data.pdf_url) {
         state.currentSong = state.currentSong || {};
         state.currentSong.partitura_url = data.pdf_url;
         if (state.activeDraft && state.activeDraft.data) {
            state.activeDraft.data.partitura_url = data.pdf_url;
         }
-        btnViewPdf.classList.remove('hidden');
-        btnViewPdf.onclick = () => window.open(data.pdf_url, '_blank');
+        if (btnViewPdf) {
+          btnViewPdf.classList.remove('hidden');
+          btnViewPdf.onclick = () => window.open(data.pdf_url, '_blank');
+        }
+        if (btnReprocessPdf) {
+          btnReprocessPdf.classList.remove('hidden');
+        }
       }
       
+      const existing = hasExistingChords();
+      if (existing) {
+        // Intercept: Do NOT overwrite editor. Open Discrepancies Audit Modal.
+        openPdfAuditModal(data);
+        showToast('Partitura analizada. Revisa las discrepancias en el panel de auditoría.', false);
+      } else {
+        // Empty editor: apply directly
+        applyExtractedPdfData(data, true, true);
+        if (data.discrepancias && data.discrepancias.length > 0) {
+          showToast('⚠️ Resultado NO confiable. Resuelve las diferencias.', true);
+        } else {
+          const modelTag = data.modelo_usado ? ` (${data.modelo_usado.replace('models/', '')})` : '';
+          const actionLabel = reprocess ? 'Partitura del servidor reprocesada' : 'Archivo procesado';
+          showToast(`${actionLabel} correctamente${modelTag}`, false);
+        }
+        saveDraftSong();
+      }
+    } catch (err) {
+      showToast(err.message, true);
+    } finally {
+      if (pdfExtractLoading) pdfExtractLoading.classList.add('hidden');
+      if (pdfUpload) pdfUpload.value = '';
+      if (cifradoUpload) cifradoUpload.value = '';
+    }
+  }
+
+  function hasExistingChords() {
+    const text = document.getElementById('chordpro-textarea')?.value?.trim() || '';
+    const key = document.getElementById('cifra-key')?.value?.trim() || '';
+    const bpm = document.getElementById('cifra-bpm')?.value?.trim() || '';
+    return text.length > 0 || key.length > 0 || (bpm.length > 0 && bpm !== '0');
+  }
+
+  function applyExtractedPdfData(data, applyChords = true, applyMeta = true) {
+    if (!data) return;
+    if (applyMeta) {
+      if (data.tonalidad !== undefined) document.getElementById('cifra-key').value = data.tonalidad || '';
+      if (data.bpm !== undefined) document.getElementById('cifra-bpm').value = data.bpm || '';
+      if (data.tiempo !== undefined) document.getElementById('cifra-tiempo').value = data.tiempo || '';
+      if (data.ritmo !== undefined) document.getElementById('cifra-ritmo').value = data.ritmo || '';
+    }
+    if (applyChords && data.chordpro !== undefined) {
+      const textarea = document.getElementById('chordpro-textarea');
+      if (textarea) {
+        textarea.value = data.chordpro || '';
+        textarea.dispatchEvent(new Event('input'));
+        adjustTextareaHeight();
+        renderChordProPreview();
+      }
+    }
+    if (pdfDiscrepanciesList && pdfDiscrepanciesAlert) {
+      pdfDiscrepanciesList.innerHTML = '';
       if (data.discrepancias && data.discrepancias.length > 0) {
         data.discrepancias.forEach(d => {
           const li = document.createElement('li');
@@ -511,25 +644,208 @@ function setupEventListeners() {
           pdfDiscrepanciesList.appendChild(li);
         });
         pdfDiscrepanciesAlert.classList.remove('hidden');
-        showToast('⚠️ Resultado NO confiable. Resuelve las diferencias.', true);
       } else {
-        const modelTag = data.modelo_usado ? ` (${data.modelo_usado.replace('models/', '')})` : '';
-        showToast('Archivo procesado correctamente' + modelTag, false);
+        pdfDiscrepanciesAlert.classList.add('hidden');
       }
-      
-      saveDraftSong();
-    } catch (err) {
-      showToast(err.message, true);
-    } finally {
-      pdfExtractLoading.classList.add('hidden');
-      if (pdfUpload) pdfUpload.value = '';
-      if (cifradoUpload) cifradoUpload.value = '';
     }
   }
 
+  function generateChordProDiffHtml(txt1, txt2) {
+    const lines1 = (txt1 || '').split('\n');
+    const lines2 = (txt2 || '').split('\n');
+    let html = '';
+    const max = Math.max(lines1.length, lines2.length);
+    let diffCount = 0;
+
+    for (let i = 0; i < max; i++) {
+      const l1 = lines1[i];
+      const l2 = lines2[i];
+
+      if (l1 === l2) {
+        html += `<div class="diff-line diff-equal"><span class="diff-prefix">&nbsp;</span><span class="diff-text">${escapeHtml(l1 || '')}</span></div>`;
+      } else {
+        diffCount++;
+        if (l1 !== undefined) {
+          html += `<div class="diff-line diff-removed"><span class="diff-prefix">-</span><span class="diff-text">${escapeHtml(l1)}</span></div>`;
+        }
+        if (l2 !== undefined) {
+          html += `<div class="diff-line diff-added"><span class="diff-prefix">+</span><span class="diff-text">${escapeHtml(l2)}</span></div>`;
+        }
+      }
+    }
+    return { html, diffCount };
+  }
+
+  function openPdfAuditModal(data) {
+    if (!pdfAuditModal) return;
+    state.pendingPdfAudit = data;
+
+    const currentKey = document.getElementById('cifra-key')?.value?.trim() || '';
+    const currentBpm = document.getElementById('cifra-bpm')?.value?.trim() || '';
+    const currentTiempo = document.getElementById('cifra-tiempo')?.value?.trim() || '';
+    const currentRitmo = document.getElementById('cifra-ritmo')?.value?.trim() || '';
+    const currentChordPro = document.getElementById('chordpro-textarea')?.value || '';
+
+    // 1. Meta Comparison Cards
+    const metaFields = [
+      {
+        label: 'Tonalidad',
+        curr: currentKey,
+        detected: data.tonalidad || '',
+        differs: (currentKey.toUpperCase() !== (data.tonalidad || '').toUpperCase())
+      },
+      {
+        label: 'BPM',
+        curr: currentBpm,
+        detected: data.bpm ? String(data.bpm) : '',
+        differs: (parseInt(currentBpm) || 0) !== (parseInt(data.bpm) || 0)
+      },
+      {
+        label: 'Compás',
+        curr: currentTiempo,
+        detected: data.tiempo || '',
+        differs: (currentTiempo.replace(/\s+/g, '') !== (data.tiempo || '').replace(/\s+/g, ''))
+      },
+      {
+        label: 'Ritmo',
+        curr: currentRitmo,
+        detected: data.ritmo || '',
+        differs: (currentRitmo.toLowerCase().trim() !== (data.ritmo || '').toLowerCase().trim())
+      }
+    ];
+
+    if (auditMetaGrid) {
+      auditMetaGrid.innerHTML = metaFields.map(f => `
+        <div class="audit-meta-card ${f.differs ? 'is-diff' : 'is-match'}">
+          <div class="audit-meta-card-title">${f.label}</div>
+          <div class="audit-meta-values">
+            <div class="audit-meta-col">
+              <span class="audit-meta-tag">Actual</span>
+              <span class="audit-meta-val">${escapeHtml(f.curr || '—')}</span>
+            </div>
+            <div class="audit-meta-arrow">➔</div>
+            <div class="audit-meta-col">
+              <span class="audit-meta-tag">PDF</span>
+              <span class="audit-meta-val">${escapeHtml(f.detected || '—')}</span>
+            </div>
+          </div>
+          ${f.differs 
+            ? '<span class="badge-audit-mismatch">⚠️ Difiere</span>' 
+            : '<span class="badge-audit-match">✓ Coincide</span>'}
+        </div>
+      `).join('');
+    }
+
+    // 2. Lyrics discrepancies
+    if (auditLyricsContent) {
+      if (data.discrepancias && data.discrepancias.length > 0) {
+        auditLyricsContent.innerHTML = `
+          <div class="audit-lyrics-alert">
+            <strong>⚠️ Diferencias textuales encontradas entre la partitura y la letra registrada:</strong>
+            <ul>
+              ${data.discrepancias.map(d => `<li>${escapeHtml(d)}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      } else {
+        auditLyricsContent.innerHTML = `
+          <div class="audit-lyrics-ok">
+            <span>✓ La letra cantada en la partitura coincide con la letra registrada en la base de datos.</span>
+          </div>
+        `;
+      }
+    }
+
+    // 3. ChordPro Diff
+    if (auditDiffViewer) {
+      const diffResult = generateChordProDiffHtml(currentChordPro, data.chordpro || '');
+      if (diffResult.diffCount === 0 && currentChordPro.trim().length > 0) {
+        auditDiffViewer.innerHTML = `<div style="color: var(--color-success); padding: 8px;">✓ No hay diferencias en las líneas de acordes ni en el texto ChordPro.</div>`;
+      } else {
+        auditDiffViewer.innerHTML = diffResult.html;
+      }
+    }
+
+    pdfAuditModal.classList.remove('hidden');
+  }
+
+  function closePdfAuditModal() {
+    if (pdfAuditModal) pdfAuditModal.classList.add('hidden');
+    state.pendingPdfAudit = null;
+  }
+
+  if (closePdfAuditX) {
+    closePdfAuditX.addEventListener('click', () => {
+      closePdfAuditModal();
+      showToast('Auditoría cerrada. Se conservaron las cifras actuales.', false);
+    });
+  }
+
+  if (btnAuditDiscard) {
+    btnAuditDiscard.addEventListener('click', () => {
+      closePdfAuditModal();
+      showToast('Se conservaron las cifras actuales. La partitura permanece guardada.', false);
+    });
+  }
+
+  if (btnAuditCopy) {
+    btnAuditCopy.addEventListener('click', () => {
+      if (state.pendingPdfAudit?.chordpro) {
+        navigator.clipboard.writeText(state.pendingPdfAudit.chordpro)
+          .then(() => showToast('Cifras ChordPro copiadas al portapapeles 📋', false))
+          .catch(() => showToast('No se pudo copiar automáticamente al portapapeles', true));
+      }
+    });
+  }
+
+  if (btnAuditApplyMeta) {
+    btnAuditApplyMeta.addEventListener('click', () => {
+      if (state.pendingPdfAudit) {
+        applyExtractedPdfData(state.pendingPdfAudit, false, true);
+        showToast('Metadatos de partitura aplicados (acordes conservados).', false);
+        saveDraftSong();
+      }
+      closePdfAuditModal();
+    });
+  }
+
+  if (btnAuditApplyAll) {
+    btnAuditApplyAll.addEventListener('click', () => {
+      if (state.pendingPdfAudit) {
+        applyExtractedPdfData(state.pendingPdfAudit, true, true);
+        showToast('Cifras y metadatos del PDF aplicados al editor.', false);
+        saveDraftSong();
+      }
+      closePdfAuditModal();
+    });
+  }
+
   if (btnExtractPdf && pdfUpload) {
-    btnExtractPdf.addEventListener('click', () => pdfUpload.click());
+    btnExtractPdf.addEventListener('click', (e) => {
+      e.preventDefault();
+      pdfUpload.click();
+    });
     pdfUpload.addEventListener('change', (e) => processAiExtraction(e.target.files[0], 'partitura'));
+  }
+  if (btnAttachPdf && pdfAttachUpload) {
+    btnAttachPdf.addEventListener('click', (e) => {
+      e.preventDefault();
+      const songId = state.currentSongId !== undefined ? state.currentSongId : (state.currentSong?.id || null);
+      if (!songId || songId === 'temp') {
+        showToast('Selecciona o guarda la alabanza antes de adjuntar una partitura.', true);
+        return;
+      }
+      pdfAttachUpload.click();
+    });
+    pdfAttachUpload.addEventListener('change', (e) => uploadPdfOnly(e.target.files[0]));
+  }
+  if (btnReprocessPdf) {
+    btnReprocessPdf.addEventListener('click', () => {
+      const confirmReprocess = confirm('¿Deseas volver a analizar la partitura guardada en el servidor usando la letra actual?\nSi la alabanza ya tiene cifras en el editor, podrás auditar las discrepancias antes de insertarlas.');
+      if (confirmReprocess) {
+        processAiExtraction(null, 'partitura', true);
+      }
+    });
   }
   if (btnExtractCifrado && cifradoUpload) {
     btnExtractCifrado.addEventListener('click', () => cifradoUpload.click());
@@ -1008,6 +1324,7 @@ window.loadSong = async function(songId) {
     state.notesList = state.activeDraft ? (state.activeDraft.data.notas || []) : (state.currentSong?.notas || []);
     
     const btnViewPdf = document.getElementById('btn-view-pdf');
+    const btnReprocessPdf = document.getElementById('btn-reprocess-pdf');
     if (btnViewPdf) {
       if (data.partitura_url) {
         btnViewPdf.classList.remove('hidden');
@@ -1015,6 +1332,13 @@ window.loadSong = async function(songId) {
       } else {
         btnViewPdf.classList.add('hidden');
         btnViewPdf.onclick = null;
+      }
+    }
+    if (btnReprocessPdf) {
+      if (data.partitura_url) {
+        btnReprocessPdf.classList.remove('hidden');
+      } else {
+        btnReprocessPdf.classList.add('hidden');
       }
     }
     // Sync active highlight
@@ -1059,6 +1383,16 @@ window.loadSong = async function(songId) {
     // Toggle approval buttons and Diff Tab link for admins
     const isAdmin = state.user.rol === 'admin';
     const isPending = state.activeDraft && state.activeDraft.status === 'pending_approval';
+    const hasDraft = Boolean(state.activeDraft);
+    const canDiscard = hasDraft && (isAdmin || (state.activeDraft.editor_id === state.user.id));
+
+    if (discardDraftBtn) {
+      discardDraftBtn.classList.toggle('hidden', !canDiscard);
+    }
+    const mobileDiscardBtn = document.getElementById('mobile-discard-draft-btn');
+    if (mobileDiscardBtn) {
+      mobileDiscardBtn.classList.toggle('hidden', !canDiscard);
+    }
     
     adminApprovalActions.classList.toggle('hidden', !(isAdmin && isPending));
     tabDiffLink.classList.toggle('hidden', !(isAdmin && state.activeDraft));
@@ -2084,6 +2418,44 @@ async function rejectDraftSong() {
     await loadSong(state.currentSongId);
   } catch {
     showToast("Error al rechazar borrador.", true);
+  }
+}
+
+async function discardDraftSong() {
+  if (!state.currentSongId || !state.activeDraft) return;
+
+  const isNewSong = state.currentSongId < 0 || !state.currentSong;
+  const confirmMsg = isNewSong
+    ? "¿Estás seguro de descartar este borrador? Al ser una alabanza nueva que no existe en producción, se eliminará por completo."
+    : "¿Estás seguro de descartar este borrador? Se perderán todos los cambios propuestos y se restaurará la versión oficial de producción.";
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/drafts/${state.currentSongId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Error al descartar el borrador.");
+    }
+
+    showToast(isNewSong ? "Borrador eliminado." : "Borrador descartado. Versión oficial restaurada.");
+
+    if (isNewSong) {
+      state.currentSongId = null;
+      state.currentSong = null;
+      state.activeDraft = null;
+      document.getElementById('editor-panel').classList.add('hidden');
+      document.getElementById('empty-state').classList.remove('hidden');
+      await fetchSongs();
+    } else {
+      await fetchSongs();
+      await loadSong(state.currentSongId);
+    }
+  } catch (err) {
+    showToast(`Error al descartar: ${err.message}`, true);
   }
 }
 

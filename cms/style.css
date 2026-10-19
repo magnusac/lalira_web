@@ -2758,3 +2758,218 @@ input:focus, select:focus, textarea:focus {
 .chord-nudge-btn:hover {
   background: var(--color-secondary-hover);
 }
+
+/* ─────────────────────────────────────────────────────────────
+   PDF AUDIT MODAL STYLES (DISCREPANCIES & DIFF)
+   ───────────────────────────────────────────────────────────── */
+.pdf-audit-modal-card {
+  max-width: 840px !important;
+  width: 95%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-audit-body {
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-right: 4px;
+}
+
+.audit-section {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.audit-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.audit-section-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-bright);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.audit-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.audit-meta-card {
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  border: 1px solid var(--border-glass);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.audit-meta-card.is-match {
+  border-color: rgba(46, 204, 113, 0.4);
+  background: rgba(46, 204, 113, 0.05);
+}
+
+.audit-meta-card.is-diff {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(254, 243, 199, 0.3);
+}
+
+.audit-meta-card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.audit-meta-values {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.audit-meta-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.audit-meta-tag {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.audit-meta-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-bright);
+  font-family: monospace;
+}
+
+.audit-meta-arrow {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.badge-audit-match {
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(46, 204, 113, 0.15);
+  color: var(--color-success);
+  font-weight: 600;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.badge-audit-mismatch {
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #b45309;
+  font-weight: 600;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.audit-lyrics-alert {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #f87171;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.audit-lyrics-alert ul {
+  margin-top: 6px;
+  margin-bottom: 0;
+  padding-left: 20px;
+}
+
+.audit-lyrics-ok {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #86efac;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.audit-diff-viewer {
+  background: #ffffff;
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-family: monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+.diff-line {
+  display: flex;
+  gap: 8px;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+.diff-line.diff-equal {
+  color: var(--color-text-normal);
+}
+
+.diff-line.diff-removed {
+  background-color: rgba(192, 57, 43, 0.12);
+  color: #991b1b;
+  border-left: 3px solid var(--color-primary);
+}
+
+.diff-line.diff-added {
+  background-color: rgba(46, 204, 113, 0.15);
+  color: #166534;
+  border-left: 3px solid var(--color-success);
+}
+
+.diff-prefix {
+  user-select: none;
+  font-weight: bold;
+  width: 14px;
+  text-align: center;
+}
+
+.diff-text {
+  flex: 1;
+  word-break: break-word;
+}
+
+.pdf-audit-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  border-top: 1px solid var(--border-glass);
+  padding-top: 14px;
+}

@@ -11,7 +11,10 @@ $deepLink = !empty($hymnId) ? "lalira://hymn/" . htmlspecialchars($hymnId) : "la
 // Helper para convertir títulos a Title Case respetando UTF-8
 function formatTitleCase($str) {
     if (empty($str)) return '';
-    return mb_convert_case(mb_strtolower($str, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
+    if (function_exists('mb_convert_case')) {
+        return mb_convert_case(mb_strtolower($str, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
+    }
+    return ucwords(strtolower($str));
 }
 
 // Intentar consultar datos del himno en la base de datos SQLite
@@ -19,18 +22,36 @@ $songNumber = '';
 $songTitle = '';
 
 if (!empty($hymnId)) {
-    $possiblePaths = [
-        dirname(__DIR__) . '/catalogo/catalogo_v2.sqlite',
-        '/home3/magnusal/public_html/lalira/catalogo/catalogo_v2.sqlite',
-        getenv('DB_PATH') ?: '',
-        '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/assets/catalogo_v2.sqlite'
-    ];
+    $prodWorkingDb = '/home3/magnusal/lalira/catalogo_v2_working.sqlite';
+    $prodVersionPath = dirname(__DIR__) . '/catalogo/version_v2.json';
 
     $dbPath = null;
-    foreach ($possiblePaths as $p) {
-        if (!empty($p) && file_exists($p)) {
-            $dbPath = $p;
-            break;
+    if (file_exists($prodWorkingDb) && filesize($prodWorkingDb) > 1024) {
+        $dbPath = $prodWorkingDb;
+    } elseif (file_exists($prodVersionPath)) {
+        $vdata = json_decode(@file_get_contents($prodVersionPath), true);
+        if (!empty($vdata['url'])) {
+            $snapshotName = basename($vdata['url']);
+            $snapshotPath = dirname(__DIR__) . '/catalogo/' . $snapshotName;
+            if (file_exists($snapshotPath) && filesize($snapshotPath) > 1024) {
+                $dbPath = $snapshotPath;
+            }
+        }
+    }
+
+    if (!$dbPath) {
+        $candidates = [
+            dirname(__DIR__) . '/assets/catalogo_v2.sqlite',
+            dirname(__DIR__) . '/catalogo/catalogo_v2.sqlite',
+            '/home3/magnusal/public_html/lalira/catalogo/catalogo_v2.sqlite',
+            getenv('DB_PATH') ?: '',
+            '/Users/magnus.carlos/Documents/GitHub/lalira/himnario/himnario/assets/catalogo_v2.sqlite'
+        ];
+        foreach ($candidates as $cand) {
+            if (!empty($cand) && file_exists($cand) && filesize($cand) > 1024) {
+                $dbPath = $cand;
+                break;
+            }
         }
     }
 
@@ -41,29 +62,41 @@ if (!empty($hymnId)) {
             $stmt = $db->prepare("
                 SELECT c.numero_en_himnario, m.titulo 
                 FROM cancion c 
-                LEFT JOIN cancion_metadata m ON c.id = m.cancion_id AND m.idioma = 'es' 
+                LEFT JOIN cancion_metadata m ON c.id = m.cancion_id 
                 WHERE c.id = ? 
+                ORDER BY CASE WHEN m.idioma = 'es' THEN 1 WHEN m.idioma = 'pt' THEN 2 ELSE 3 END 
                 LIMIT 1
             ");
-            $stmt->execute([$hymnId]);
-            $song = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($song) {
-                $songNumber = trim($song['numero_en_himnario'] ?? '');
-                $rawTitle = trim($song['titulo'] ?? '');
-                $songTitle = formatTitleCase($rawTitle);
+            if ($stmt && $stmt->execute([$hymnId])) {
+                $song = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($song) {
+                    $rawNumber = trim((string)($song['numero_en_himnario'] ?? ''));
+                    $rawTitle = trim((string)($song['titulo'] ?? ''));
+                    $songTitle = formatTitleCase($rawTitle);
+                    $songNumber = $rawNumber;
+                }
             }
-        } catch (Exception $e) {
-            // Silencioso: fallback a textos generales
+        } catch (\Throwable $e) {
+            // Silencioso: fallback seguro sin romper la página
         }
     }
 }
 
 // Construir títulos y textos dinámicos
-if (!empty($songNumber) && !empty($songTitle)) {
-    $headingText = "#{$songNumber} {$songTitle}";
-    $pageTitle = "#{$songNumber} {$songTitle} - La Lira";
-    $ogTitle = "#{$songNumber} {$songTitle}";
-    $ogDesc = "Abre y reproduce el himno #{$songNumber} con letra y acordes en la aplicación oficial La Lira.";
+$hasNumber = ($songNumber !== '' && $songNumber !== '0' && (int)$songNumber > 0);
+
+if (!empty($songTitle)) {
+    if ($hasNumber) {
+        $headingText = "#{$songNumber} {$songTitle}";
+        $pageTitle = "#{$songNumber} {$songTitle} - La Lira";
+        $ogTitle = "#{$songNumber} {$songTitle}";
+        $ogDesc = "Abre y reproduce el himno #{$songNumber} con letra y acordes en la aplicación oficial La Lira.";
+    } else {
+        $headingText = $songTitle;
+        $pageTitle = "{$songTitle} - La Lira";
+        $ogTitle = $songTitle;
+        $ogDesc = "Abre y reproduce esta alabanza con letra y acordes en la aplicación oficial La Lira.";
+    }
 } elseif (!empty($hymnId)) {
     $headingText = "Himno en La Lira";
     $pageTitle = "Himno en La Lira";

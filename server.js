@@ -685,6 +685,13 @@ app.get('/api/songs/:id', authenticateToken, (req, res) => {
       return res.status(404).json({ error: 'Alabanza no encontrada' });
     }
 
+    let partitura_url = null;
+    const sanitizedId = String(songId).replace(/[^a-zA-Z0-9_-]/g, '');
+    const possiblePdf = path.join(__dirname, 'assets', 'partituras', `cancion_${sanitizedId}.pdf`);
+    if (fs.existsSync(possiblePdf)) {
+      partitura_url = `/assets/partituras/cancion_${sanitizedId}.pdf`;
+    }
+
     res.json({
       production: prodSong,
       draft: draft ? {
@@ -693,7 +700,8 @@ app.get('/api/songs/:id', authenticateToken, (req, res) => {
         editor_id: draft.editor_id,
         modificado_en: draft.modificado_en,
         data: JSON.parse(draft.data_json)
-      } : null
+      } : null,
+      partitura_url: partitura_url
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -953,6 +961,28 @@ app.post('/api/drafts/:songId/reject', authenticateToken, requireAdmin, (req, re
     }
 
     logAudit(req.user.id, 'REJECT', songId, `Borrador rechazado. Motivo: ${motivo || 'No especificado'}`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Discard draft
+app.delete('/api/drafts/:songId', authenticateToken, (req, res) => {
+  const songId = parseInt(req.params.songId);
+
+  try {
+    const draft = dbCms.prepare("SELECT * FROM draft_hymn WHERE cancion_id = ?").get(songId);
+    if (!draft) {
+      return res.status(404).json({ error: 'Borrador no encontrado' });
+    }
+
+    if (req.user.rol !== 'admin' && draft.editor_id !== req.user.id) {
+      return res.status(403).json({ error: 'No tienes permisos para descartar el borrador de otro usuario' });
+    }
+
+    dbCms.prepare("DELETE FROM draft_hymn WHERE cancion_id = ?").run(songId);
+    logAudit(req.user.id, 'DISCARD_DRAFT', songId, 'Borrador descartado.');
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

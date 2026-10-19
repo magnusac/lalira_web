@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 
 // Bump only together with a mobile app release that supports the new schema.
 // Breaking schema changes must be published under version_v3.json (ADR-005).
@@ -252,6 +253,44 @@ export function publishCatalog(config) {
     fs.renameSync(tmp, finalPath);
     tmp = null;
 
+    let partituras = previous.partituras ? { ...previous.partituras } : {};
+    const candidates = [];
+    if (config.partiturasDir) candidates.push(config.partiturasDir);
+    candidates.push(path.join(path.dirname(publishDir), 'assets', 'partituras'));
+    candidates.push(path.join(path.dirname(fileURLToPath(import.meta.url)), 'assets', 'partituras'));
+    candidates.push(path.join(path.dirname(publishDir), 'uploads', 'partituras'));
+
+    const foundDir = candidates.find(c => fs.existsSync(c));
+    if (foundDir) {
+      const files = fs.readdirSync(foundDir);
+      let dbForMeta = null;
+      try {
+        dbForMeta = new DatabaseSync(finalPath);
+      } catch {}
+
+      for (const file of files) {
+        if (!file.toLowerCase().endsWith('.pdf')) continue;
+        const m = file.match(/^(?:cancion_|himno_)?(\d+)(?:_[a-f0-9]+)?\.pdf$/i);
+        if (m) {
+          const val = m[1];
+          partituras[val] = file;
+          if (dbForMeta) {
+            try {
+              const stmt = dbForMeta.prepare("SELECT id, numero_en_himnario FROM cancion WHERE id = ? OR numero_en_himnario = ?");
+              const rows = stmt.all(val, val);
+              for (const r of rows) {
+                if (r.id != null) partituras[String(r.id)] = file;
+                if (r.numero_en_himnario != null) partituras[String(r.numero_en_himnario)] = file;
+              }
+            } catch {}
+          }
+        }
+      }
+      if (dbForMeta) {
+        try { dbForMeta.close(); } catch {}
+      }
+    }
+
     // Fields are only ever added; version, url and size are read by released app binaries.
     const manifest = {
       ...previous,
@@ -263,6 +302,11 @@ export function publishCatalog(config) {
       md5,
       publishedAt: now.toISOString(),
     };
+
+    if (Object.keys(partituras).length > 0) {
+      manifest.mediaBaseUrl = (config.mediaBaseUrl || 'https://lalira.app/assets/partituras').replace(/\/+$/, '');
+      manifest.partituras = partituras;
+    }
     writeAtomic(versionPath, JSON.stringify(manifest, null, 4) + '\n');
 
     if (config.assetsDbPath) {
